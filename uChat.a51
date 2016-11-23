@@ -102,4 +102,95 @@ inlcd:			CLR RSLCD					; modo de instruccion
 				NOP
 				CLR ELCD
 				RET
+
+dato:			ACALL adjust
+				INC R2
+				MOV @R1, A
+				INC R1
+				; Mostrar dato el LCD
+				SETB RSLCD
+				MOV LCDDATA, A
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				RET
+
+DECO:			MOV C, ALTF
+				JC alt
+				MOV A, TECLADO
+				ANL A, #0FH
+				MOV DPTR, #Val
+				MOVC A, @A + DPTR
+				JMP retdec
+alt:			MOV A, TECLADO
+				ANL A, #0FH
+				MOV DPTR, #Val2
+				MOVC A, @A + DPTR
+				JB ALTDAT, dato2
+dato1:			SWAP A
+				MOV R4, A
+				SETB ALTDAT
+				JMP retdec1
+dato2:			ORL A, R4
+				CLR ALTDAT
+				MOV R4, #00H
+				JB ALTF, $
+retdec:			ACALL dato
+retdec1:		RETI
+
+T2ISR:			CLR TF2
+				SETB F0
+				RETI
+
+T0ISR:			MOV ACUM, A
+				PUSH ACUM
+				CLR TF0
+				MOV C, ALTB
+				MOV EDSIG.0, C
+				MOV A, EDANT
+				XRL A, EDSIG
+				MOV C, ACC.0
+				JNC ret0
+				CPL ALTF
+ret0:			MOV EDANT, EDSIG
+				MOV TH0, #00H
+				MOV TL0, #00H
+				POP ACUM
+				MOV A, ACUM
+				RETI
+		
+Val:			DB 31H			; 1
+				DB 32H			; 2
+				DB 33H			; 3
+				DB 41H			; A
+				DB 34H			; 4
+				DB 35H			; 5
+				DB 36H			; 6
+				DB 42H			; B
+				DB 37H			; 7
+				DB 38H			; 8
+				DB 39H			; 9
+				DB 43H			; C
+				DB 45H			; E
+				DB 30H			; 0
+				DB 46H			; F
+				DB 44H			; D
+
+Val2:			DB 01H
+				DB 02H
+				DB 03H
+				DB 0AH
+				DB 04H
+				DB 05H
+				DB 06H
+				DB 0BH
+				DB 07H
+				DB 08H
+				DB 09H
+				DB 0CH
+				DB 0EH
+				DB 00H
+				DB 0FH
+				DB 0DH
 				END
