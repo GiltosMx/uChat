@@ -193,5 +193,4 @@ Val2:			DB 01H
 				DB 00H
 				DB 0FH
 				DB 0DH
-					
 				END
