@@ -1,23 +1,23 @@
-		T2CON	EQU 0C8H			; TF2 EXF2 RCLK TCLK EXEN2 TR2 C/!T2 CP/!RL2
-		T2MOD	EQU 0C9H
-		RCAP2L	EQU 0CAH
-		RCAP2H	EQU 0CBH
-		TL2		EQU 0CCH
-		TH2		EQU 0CDH
-		TR2		EQU 0CAH
-		TF2		EQU 0CFH
-		LCDDATA	EQU P2
-		TECLADO	EQU P0
-		RSLCD	EQU P3.6
-		ELCD	EQU P3.7
-		ALTB	EQU P3.4
-		SENDB	EQU P3.2
-		ALTF	EQU 00H
-		ALTDAT	EQU 01H
-		EDANT	EQU 21H
-		EDSIG	EQU 22H
-		ACUM	EQU 23H
-				
+				T2CON	EQU 0C8H			; TF2 EXF2 RCLK TCLK EXEN2 TR2 C/!T2 CP/!RL2
+				T2MOD	EQU 0C9H
+				RCAP2L	EQU 0CAH
+				RCAP2H	EQU 0CBH
+				TL2		EQU 0CCH
+				TH2		EQU 0CDH
+				TR2		EQU 0CAH
+				TF2		EQU 0CFH
+				LCDDATA	EQU P2
+				TECLADO	EQU P0
+				RSLCD	EQU P3.6
+				ELCD	EQU P3.7
+				ALTB	EQU P3.4
+				SENDB	EQU P3.2
+				ALTF	EQU 00H
+				ALTDAT	EQU 01H
+				EDANT	EQU 21H
+				EDSIG	EQU 22H
+				ACUM	EQU 23H
+
 				ORG 0000H
 				JMP main
 				ORG 0003H
@@ -29,7 +29,7 @@
 				ORG 002BH
 				JMP T2ISR
 				ORG 0040H
-					
+
 		/*
 		** BANCO DE REGISTROS 0:
 		** R4 - Digito alto de ALT
@@ -38,7 +38,7 @@
 		** R3 - Contador auxiliar
 		** R0 - Indice auxiliar
 		*/
-main:			
+main:
 				MOV IE, #10100111b
 				MOV IP, #00100010b
 				SETB IT0
@@ -67,14 +67,16 @@ main:
 				MOV R2, #00H
 				ACALL inlcd
 				JMP $
-					
-w10ms:			SETB TR2
+
+w10ms:
+				SETB TR2
 				CLR F0
 				JNB F0, $
-				CLR TR2		
+				CLR TR2
 				RET
 
-inlcd:			CLR RSLCD					; modo de instruccion
+inlcd:
+				CLR RSLCD					; modo de instruccion
 				ACALL w10ms
 				ACALL w10ms
 				MOV LCDDATA, #38H
@@ -103,7 +105,8 @@ inlcd:			CLR RSLCD					; modo de instruccion
 				CLR ELCD
 				RET
 
-dato:			ACALL adjust
+dato:
+				ACALL adjust
 				INC R2
 				MOV @R1, A
 				INC R1
@@ -116,34 +119,42 @@ dato:			ACALL adjust
 				ACALL w10ms
 				RET
 
-DECO:			MOV C, ALTF
+DECO:
+				MOV C, ALTF
 				JC alt
 				MOV A, TECLADO
 				ANL A, #0FH
 				MOV DPTR, #Val
 				MOVC A, @A + DPTR
 				JMP retdec
-alt:			MOV A, TECLADO
+alt:
+				MOV A, TECLADO
 				ANL A, #0FH
 				MOV DPTR, #Val2
 				MOVC A, @A + DPTR
 				JB ALTDAT, dato2
-dato1:			SWAP A
+dato1:
+				SWAP A
 				MOV R4, A
 				SETB ALTDAT
 				JMP retdec1
-dato2:			ORL A, R4
+dato2:
+				ORL A, R4
 				CLR ALTDAT
 				MOV R4, #00H
 				JB ALTF, $
-retdec:			ACALL dato
-retdec1:		RETI
+retdec:
+				ACALL dato
+retdec1:
+				RETI
 
-T2ISR:			CLR TF2
+T2ISR:
+				CLR TF2
 				SETB F0
 				RETI
 
-T0ISR:			MOV ACUM, A
+T0ISR:
+				MOV ACUM, A
 				PUSH ACUM
 				CLR TF0
 				MOV C, ALTB
@@ -153,14 +164,16 @@ T0ISR:			MOV ACUM, A
 				MOV C, ACC.0
 				JNC ret0
 				CPL ALTF
-ret0:			MOV EDANT, EDSIG
+ret0:
+				MOV EDANT, EDSIG
 				MOV TH0, #00H
 				MOV TL0, #00H
 				POP ACUM
 				MOV A, ACUM
 				RETI
-		
-Val:			DB 31H			; 1
+
+Val:
+				DB 31H			; 1
 				DB 32H			; 2
 				DB 33H			; 3
 				DB 41H			; A
@@ -177,7 +190,8 @@ Val:			DB 31H			; 1
 				DB 46H			; F
 				DB 44H			; D
 
-Val2:			DB 01H
+Val2:
+				DB 01H
 				DB 02H
 				DB 03H
 				DB 0AH
