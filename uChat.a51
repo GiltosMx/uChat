@@ -67,6 +67,8 @@ main:
 				MOV R2, #00H
 				ACALL inlcd
 				JMP $
+SEND:
+				RETI
 
 w10ms:
 				SETB TR2
@@ -106,7 +108,6 @@ inlcd:
 				RET
 
 dato:
-				ACALL adjust
 				INC R2
 				MOV @R1, A
 				INC R1
