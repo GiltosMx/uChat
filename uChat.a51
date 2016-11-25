@@ -109,25 +109,46 @@ sdata:
 				DEC R3
 				CJNE R3, #00H, sdata
 retsnd:			
-				SETB EX0
 				ACALL clar
+				SETB EX0
 				RETI
 				
 clar:			
 				MOV R1, #80H
 				MOV R2, #00H
+				CLR RSLCD
 				MOV LCDDATA, #80H
 				SETB ELCD
 				NOP
 				CLR ELCD
 				ACALL w10ms
-				MOV LCDDATA, #01H
+				MOV R5, #10H
+				SETB RSLCD
+clarcic:		
+				MOV LCDDATA, #20H
 				SETB ELCD
 				NOP
 				CLR ELCD
 				ACALL w10ms
-				MOV R5, #10H
-				
+				DJNZ R5, clarcic
+				CLR RSLCD
+				MOV LCDDATA, #80H
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				MOV A, #YO
+				ORL A, #30H
+				MOV LCDDATA, A
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				MOV LCDDATA, #3AH
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
 				RET
 
 w10ms:
@@ -165,6 +186,25 @@ inlcd:
 				SETB ELCD
 				NOP
 				CLR ELCD
+				
+				CLR RSLCD
+				MOV LCDDATA, #80H
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				MOV A, #YO
+				ORL A, #30H
+				MOV LCDDATA, A
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				MOV LCDDATA, #3AH
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
 				RET
 
 dato:
@@ -181,6 +221,9 @@ dato:
 				RET
 
 DECO: ;Recibe dato del teclado matricial y lo decodifica
+				CJNE R2, #0EH, agr
+				JMP retdec1
+agr:		
 				MOV C, ALTF
 				JC alt
 				MOV A, TECLADO
