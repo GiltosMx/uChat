@@ -6,12 +6,12 @@
 				TH2		EQU 0CDH
 				TR2		EQU 0CAH
 				TF2		EQU 0CFH
-				LCDDATA	EQU P2
-				TECLADO	EQU P0
+				LCDDATA	EQU P2 ;Salida al LCD
+				TECLADO	EQU P0 ;Entrada de 4 bits, del teclado matricial
 				RSLCD	EQU P3.6
 				ELCD	EQU P3.7
-				ALTB	EQU P3.4
-				SENDB	EQU P3.2
+				ALTB	EQU P3.4 ;Entrada del boton ALT
+				SENDB	EQU P3.2 ;Entrada del boton SEND
 				ALTF	EQU 00H
 				ALTDAT	EQU 01H
 				EDANT	EQU 21H
@@ -20,27 +20,27 @@
 
 				ORG 0000H
 				JMP main
-				ORG 0003H
+				ORG 0003H ;IEX0
 				JMP SEND
-				ORG 000BH
+				ORG 000BH ;T0
 				JMP T0ISR
-				ORG 0013H
+				ORG 0013H ;IE1
 				JMP DECO
-				ORG 002BH
+				ORG 002BH ;T2F
 				JMP T2ISR
 				ORG 0040H
 
-		/*
-		** BANCO DE REGISTROS 0:
-		** R4 - Digito alto de ALT
-		** R1 - Indice de datos
-		** R2 - Contador de datos
-		** R3 - Contador auxiliar
-		** R0 - Indice auxiliar
-		*/
+				/*
+				** BANCO DE REGISTROS 0:
+				** R4 - Digito alto de ALT
+				** R1 - Indice de datos
+				** R2 - Contador de datos
+				** R3 - Contador auxiliar
+				** R0 - Indice auxiliar
+				*/
 main:
-				MOV IE, #10100111b
-				MOV IP, #00100010b
+				MOV IE, #10110111b
+				MOV IP, #00010000b
 				SETB IT0
 				SETB IT1
 				SETB TI
@@ -120,7 +120,7 @@ dato:
 				ACALL w10ms
 				RET
 
-DECO:
+DECO: ;Recibe dato del teclado matricial y lo decodifica
 				MOV C, ALTF
 				JC alt
 				MOV A, TECLADO
@@ -154,7 +154,7 @@ T2ISR:
 				SETB F0
 				RETI
 
-T0ISR:
+T0ISR: ;Checa si el boton ALT sigue presionado
 				MOV ACUM, A
 				PUSH ACUM
 				CLR TF0
