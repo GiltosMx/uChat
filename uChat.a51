@@ -40,10 +40,11 @@
 				*/
 main:
 				MOV IE, #10110111b
-				MOV IP, #00010000b
+				MOV IP, #00110010b
 				SETB IT0
 				SETB IT1
 				SETB TI
+				SETB RI
 				MOV EDANT, #00H
 				MOV EDSIG, #00H
 				SETB ALTF
@@ -60,8 +61,8 @@ main:
 				MOV TH0, #00H
 				MOV TL0, #00H
 				SETB TR0
-				; Inicializar puerto serial
-				MOV SCON, #01010000b
+				; Inicializar puerto serial modo 2 UART 9 bits velocidad fija
+				MOV SCON, #10010000b
 				MOV SP, #5FH
 				MOV R1, #80H
 				MOV R2, #00H
