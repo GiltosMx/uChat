@@ -17,6 +17,8 @@
 				EDANT	EQU 21H
 				EDSIG	EQU 22H
 				ACUM	EQU 23H
+				TOKEN	EQU 24H
+				YO		EQU 00H
 
 				ORG 0000H
 				JMP main
@@ -68,8 +70,65 @@ main:
 				MOV R2, #00H
 				ACALL inlcd
 				JMP $
+
 SEND:
+				CLR EX0
+				ACALL w10ms
+				ACALL w10ms
+				ACALL w10ms
+				ACALL w10ms
+				ACALL w10ms
+				MOV C, SENDB
+				JC retsnd
+				MOV R3, 02H 
+				MOV R0, #80H
+				CJNE R3, #00H, sdata0
+				JMP retsnd
+sdata0:			
+				CLR A
+				MOV A, #YO
+				RL A
+				RL A
+				RL A
+				RL A
+				RL A
+				RL A
+				RL A
+				ORL A, #30H
+				ORL A, R2
+				MOV C, TOKEN
+				MOV TB8, C
+				MOV SBUF, A
+				JNB TI, $
+				CLR TI
+sdata:			
+				MOV SBUF, @R0
+				JNB TI, $
+				CLR TI
+				INC R0
+				DEC R3
+				CJNE R3, #00H, sdata
+retsnd:			
+				SETB EX0
+				ACALL clar
 				RETI
+				
+clar:			
+				MOV R1, #80H
+				MOV R2, #00H
+				MOV LCDDATA, #80H
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				MOV LCDDATA, #01H
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				MOV R5, #10H
+				
+				RET
 
 w10ms:
 				SETB TR2
