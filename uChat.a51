@@ -6,7 +6,10 @@
 				TH2		EQU 0CDH
 				TR2		EQU 0CAH
 				TF2		EQU 0CFH
+					
+				YO		EQU 00H
 				
+				;I/O
 				LCDDATA	EQU P2 ;Salida al LCD
 				TECLADO	EQU P0 ;Entrada de 4 bits, del teclado matricial
 				RSLCD	EQU P3.6
@@ -14,6 +17,7 @@
 				ALTB	EQU P3.4 ;Entrada del boton ALT
 				SENDB	EQU P3.2 ;Entrada del boton SEND
 				
+				;Banderas
 				ALTF	EQU 00H
 				ALTDAT	EQU 01H
 				TOKEN	EQU 02H
@@ -23,12 +27,13 @@
 				THIRDF	EQU 06H
 				FIRSTBY	EQU 07H
 				
+				;Registros accesibles bit a bit
 				EDANT	EQU 21H
 				EDSIG	EQU 22H
 				ACUM	EQU 23H
 				INFOBY	EQU 24H
 				
-				YO		EQU 00H
+				;Memoria de proposito general (bytes)
 				MYMSG	EQU 80H
 				LASTMSG	EQU 8EH
 				LASTCNT	EQU 9CH
@@ -78,6 +83,12 @@ main:
 				SETB IT1
 				SETB TI
 				SETB RI
+				SETB TOKEN ;SOLO SI ES EL MICRO 00
+				CLR INFOM
+				CLR LASTF
+				CLR SECNDF
+				CLR THIRDF
+				CLR FIRSTBY
 				MOV EDANT, #00H
 				MOV EDSIG, #00H
 				SETB ALTF
