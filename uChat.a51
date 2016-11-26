@@ -21,6 +21,7 @@
 				LASTF	EQU 04H
 				SECNDF	EQU 05H
 				THIRDF	EQU 06H
+				FIRSTBY	EQU 07H
 				
 				EDANT	EQU 21H
 				EDSIG	EQU 22H
@@ -66,6 +67,8 @@
 				** R0 - Direccion lectura
 				** R1 - Direccion copiado
 				** R2 - Contador lectura
+				** R3 - Contador recepcion total
+				** R5 - Contador recepcion parcial
 				*/
 				
 main:
@@ -104,8 +107,7 @@ SERIAL:
 				maneja SEND*/
 				MOV C, TI
 				JC retserial
-				;Recibir el dato
-				
+
 				CLR RI
 				;Si INFOM esta prendido, ya recibimos el byte del protocolo
 				;y guardamos el mensaje
@@ -118,9 +120,39 @@ retserial:
 				RETI
 
 savemsg:		
+				JB FIRSTBY, recievedata
 				;Si ya tenemos guardado un lastMSG, lo movemos a SCNDMSG
 				JB LASTF, mvmsg1
 				
+				;Guardamos cuantos chars vamos a recibir en R3
+				SETB RS0
+				MOV A, INFOBY
+				ANL A, #0FH
+				MOV R3, A
+				;Inicializamos el contador R5 (datos ya recibidos)
+				;y el apuntador de donde inicia LASTMSG para guardar los chars
+				MOV R5, #00H
+				MOV R0, #LASTMSG
+recievedata:
+				;Si todavia no acabamos de recibir, guardamos el dato y salimos
+				;de la interrupcion SERIAL
+				CJNE R5, #0BH, revdat
+				;Ya recibimos todos los chars. Limpiamos todas las banderas de control
+				;para dejarlo listo para otra recepcion de chars.
+				SETB LASTF
+				MOV LASTCNT, R3
+				CLR INFOM
+				CLR FIRSTBY
+				;Mandamos lo recibido al LCD
+				ACALL TOLCD
+				;Reenvia el mensaje al siguiente micro, verificando si mandar el TOKEN
+				ACALL FORWARD
+				JMP retserial
+revdat:			
+				MOV @R0, SBUF
+				INC R0
+				INC R5
+				JMP retserial	
 mvmsg1:			
 				;Si ya tenemos guardado un SCNDMSG, lo movemos al THIRDMSG
 				JB SECNDF, mvmsg2
@@ -163,7 +195,21 @@ mv2cic:
 				SETB THIRDF
 				JMP mvmsg1A
 retmov:			
-				CLR RS0				; Cambio a banco de registros 0
+				SETB FIRSTBY
+				;Copiar un byte de mensaje, inicialización de registros
+				; Recibir el dato
+				SETB RS0			; Cambio a banco de registros 1
+
+				MOV A, INFOBY
+				ANL A, #0FH
+				MOV R3, A
+				MOV R5, #00H
+				MOV R0, #LASTMSG
+
+				MOV @R0, SBUF
+				INC R0
+				INC R5	
+				CLR RS0				; Cambio a banco de registros 0				
 				JMP retserial
 
 				
@@ -171,6 +217,12 @@ PROTOCOL:
 				MOV INFOBY, SBUF
 				MOV C, RB8
 				MOV TOKEN, C
+				RET
+				
+TOLCD:			
+				RET
+
+FORWARD:		
 				RET
 
 SEND:
@@ -188,6 +240,7 @@ SEND:
 				CJNE R3, #00H, sdata0
 				JMP retsnd
 sdata0:			
+				;Genera el byte de protocolo y lo manda
 				CLR A
 				MOV A, #YO
 				RL A
@@ -205,9 +258,11 @@ sdata0:
 				CLR TI
 				ACALL w10ms
 sdata:			
+				;Envia todos los chars que se hayan escrito
 				MOV SBUF, @R0
 				JNB TI, $
 				CLR TI
+				ACALL w10ms
 				INC R0
 				DEC R3
 				CJNE R3, #00H, sdata
@@ -217,6 +272,8 @@ retsnd:
 				RETI
 				
 clar:			
+				;Limpia la parte del LCD donde se escribe,
+				;despues de mandar el dato en sdata
 				MOV R1, #MYMSG
 				MOV R2, #00H
 				CLR RSLCD
@@ -312,6 +369,7 @@ inlcd:
 				RET
 
 dato:
+				;Manda datos al LCD
 				INC R2
 				MOV @R1, A
 				INC R1
@@ -325,6 +383,7 @@ dato:
 				RET
 
 DECO: ;Recibe dato del teclado matricial y lo decodifica
+				;Verifica que no se hayan escrito los 14 chars disponibles
 				CJNE R2, #0EH, agr
 				JMP retdec1
 agr:		
