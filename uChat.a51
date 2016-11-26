@@ -6,19 +6,36 @@
 				TH2		EQU 0CDH
 				TR2		EQU 0CAH
 				TF2		EQU 0CFH
+				
 				LCDDATA	EQU P2 ;Salida al LCD
 				TECLADO	EQU P0 ;Entrada de 4 bits, del teclado matricial
 				RSLCD	EQU P3.6
 				ELCD	EQU P3.7
 				ALTB	EQU P3.4 ;Entrada del boton ALT
 				SENDB	EQU P3.2 ;Entrada del boton SEND
+				
 				ALTF	EQU 00H
 				ALTDAT	EQU 01H
+				TOKEN	EQU 02H
+				INFOM	EQU 03H
+				LASTF	EQU 04H
+				SECNDF	EQU 05H
+				THIRDF	EQU 06H
+				
 				EDANT	EQU 21H
 				EDSIG	EQU 22H
 				ACUM	EQU 23H
-				TOKEN	EQU 24H
+				INFOBY	EQU 24H
+				
 				YO		EQU 00H
+				MYMSG	EQU 80H
+				LASTMSG	EQU 8EH
+				LASTCNT	EQU 9CH
+				SECMSG	EQU 9DH
+				SECCNT	EQU 0ABH
+				THIRMSG	EQU 0ACH
+				THIRCNT	EQU 0BAH
+					
 
 				ORG 0000H
 				JMP main
@@ -28,6 +45,8 @@
 				JMP T0ISR
 				ORG 0013H ;IE1
 				JMP DECO
+				ORG 0023H ;RI / TI
+				JMP SERIAL
 				ORG 002BH ;T2F
 				JMP T2ISR
 				ORG 0040H
@@ -39,7 +58,16 @@
 				** R2 - Contador de datos
 				** R3 - Contador auxiliar
 				** R0 - Indice auxiliar
+				** R5 - Limpiar escritura				
 				*/
+				
+				/*
+				** BANCO DE REGISTROS 1:
+				** R0 - Direccion lectura
+				** R1 - Direccion copiado
+				** R2 - Contador lectura
+				*/
+				
 main:
 				MOV IE, #10110111b
 				MOV IP, #00110010b
@@ -66,10 +94,84 @@ main:
 				; Inicializar puerto serial modo 2 UART 9 bits velocidad fija
 				MOV SCON, #10010000b
 				MOV SP, #5FH
-				MOV R1, #80H
+				MOV R1, #MYMSG
 				MOV R2, #00H
 				ACALL inlcd
 				JMP $
+					
+SERIAL:			
+				/*Si fue TI, salimos de la interrupcion, y lo
+				maneja SEND*/
+				MOV C, TI
+				JC retserial
+				;Recibir el dato
+				
+				CLR RI
+				;Si INFOM esta prendido, ya recibimos el byte del protocolo
+				;y guardamos el mensaje
+				MOV C, INFOM
+				JC savemsg
+				
+				SETB INFOM
+				ACALL PROTOCOL ;Guarda el byte de informacion del protocolo
+retserial:
+				RETI
+
+savemsg:		
+				;Si ya tenemos guardado un lastMSG, lo movemos a SCNDMSG
+				JB LASTF, mvmsg1
+				
+mvmsg1:			
+				;Si ya tenemos guardado un SCNDMSG, lo movemos al THIRDMSG
+				JB SECNDF, mvmsg2
+mvmsg1A:		
+				;Copiamos del primer mensaje, al segundo
+				SETB RS0			; Cambio a banco de registros 1
+				;Establecer apuntadores de lectura y copia
+				MOV R0, #LASTMSG
+				MOV R1, #SECMSG
+				MOV R2, LASTCNT
+mv1cic:			
+				;MOV @R1, @R0
+				MOV A, @R0
+				MOV @R1, A
+				;Copiamos el contador de chars del LAST al SCND
+				INC R0
+				INC R1
+				DJNZ R2, mv1cic
+				MOV R0, #SECCNT
+				MOV @R0, LASTCNT
+				SETB SECNDF
+				JMP retmov
+mvmsg2:	
+				SETB RS0			; Cambio a banco de registros 1
+				;Establecer apuntadores para lectura y copia
+				MOV R0, #SECMSG
+				MOV R1, #THIRMSG
+				MOV R2, SECCNT
+mv2cic:			
+				;MOV @R1, @R0
+				MOV A, @R0
+				MOV @R1, A
+				
+				INC R0
+				INC R1
+				DJNZ R2, mv2cic
+				;Copiamos el contador de chars del SCND al THIRD
+				MOV R0, #THIRCNT
+				MOV @R0, SECCNT
+				SETB THIRDF
+				JMP mvmsg1A
+retmov:			
+				CLR RS0				; Cambio a banco de registros 0
+				JMP retserial
+
+				
+PROTOCOL:		
+				MOV INFOBY, SBUF
+				MOV C, RB8
+				MOV TOKEN, C
+				RET
 
 SEND:
 				CLR EX0
@@ -80,14 +182,14 @@ SEND:
 				ACALL w10ms
 				MOV C, SENDB
 				JC retsnd
+				JNB TOKEN, $
 				MOV R3, 02H 
-				MOV R0, #80H
+				MOV R0, #MYMSG
 				CJNE R3, #00H, sdata0
 				JMP retsnd
 sdata0:			
 				CLR A
 				MOV A, #YO
-				RL A
 				RL A
 				RL A
 				RL A
@@ -101,6 +203,7 @@ sdata0:
 				MOV SBUF, A
 				JNB TI, $
 				CLR TI
+				ACALL w10ms
 sdata:			
 				MOV SBUF, @R0
 				JNB TI, $
@@ -114,7 +217,7 @@ retsnd:
 				RETI
 				
 clar:			
-				MOV R1, #80H
+				MOV R1, #MYMSG
 				MOV R2, #00H
 				CLR RSLCD
 				MOV LCDDATA, #80H
@@ -137,6 +240,7 @@ clarcic:
 				NOP
 				CLR ELCD
 				ACALL w10ms
+				SETB RSLCD
 				MOV A, #YO
 				ORL A, #30H
 				MOV LCDDATA, A
