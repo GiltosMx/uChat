@@ -29,6 +29,7 @@
 				THIRDF	EQU 06H
 				FIRSTBY	EQU 07H
 				SENDING	EQU 28H
+				HISTF	EQU 29H
 				
 				;Registros accesibles bit a bit
 				EDANT	EQU 21H
@@ -81,6 +82,11 @@
 				** R5 - Contador recepcion parcial
 				*/
 				
+				/*
+				** BANCO DE REGISTROS 3:
+				** R0 - DIRECCION LECTURA
+				*/
+				
 main:
 				MOV IE, #10111111b
 				MOV IP, #00111000b
@@ -95,6 +101,7 @@ main:
 				CLR THIRDF
 				CLR FIRSTBY
 				CLR SENDING
+				CLR HISTF
 				MOV EDANT, #00H
 				MOV EDSIG, #00H
 				SETB ALTF
@@ -286,7 +293,7 @@ clarcic1:
 				NOP
 				CLR ELCD
 				ACALL w10ms
-				SETB RS0
+				SETB RS0				; Cambiar a banco de registros 3
 				SETB RS1
 				MOV R0, #LASTMSG
 				MOV R2, LASTCNT
@@ -301,7 +308,7 @@ tolcdcic:
 				CLR RS0
 				CLR RS1
 				MOV A, R2
-				ADD A, #0AAH
+				ADD A, #0C2H
 				CLR RSLCD
 				MOV LCDDATA, A
 				SETB ELCD
@@ -409,7 +416,7 @@ clar:
 				MOV R1, #MYMSG
 				MOV R2, #00H
 				CLR RSLCD
-				MOV LCDDATA, #0A8H
+				MOV LCDDATA, #0C0H
 				SETB ELCD
 				NOP
 				CLR ELCD
@@ -424,7 +431,7 @@ clarcic:
 				ACALL w10ms
 				DJNZ R5, clarcic
 				CLR RSLCD
-				MOV LCDDATA, #0A8H
+				MOV LCDDATA, #0C0H
 				SETB ELCD
 				NOP
 				CLR ELCD
@@ -481,7 +488,7 @@ inlcd:
 				CLR ELCD
 				
 				CLR RSLCD
-				MOV LCDDATA, #0A8H
+				MOV LCDDATA, #0C0H
 				SETB ELCD
 				NOP
 				CLR ELCD
@@ -570,6 +577,7 @@ T0ISR: ;Checa si el boton ALT sigue presionado
 hischk:			
 				MOV C, ACC.1
 				JNC bkcheck
+				CPL HISTF
 				ACALL HISTORY
 bkcheck:		
 				MOV C, ACC.2
@@ -582,6 +590,135 @@ ret0:
 				POP ACUM
 				MOV A, ACUM
 				RETI
+
+HISTORY:		
+				SETB RS0					; Cambiar a banco de registros 3
+				SETB RS1
+				JNB HISTF, restlcd
+				JMP conthist
+restlcd:
+				MOV R0, #10H
+				CLR RSLCD
+shiftright:
+				MOV LCDDATA, #1CH
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				DJNZ R0, shiftright
+				JMP retlcd
+				
+conthist:
+				CLR RSLCD
+				MOV LCDDATA, #90H
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				
+				MOV R0, #10H
+				SETB RSLCD
+clrhist0:
+				MOV LCDDATA, #20H
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				DJNZ R0, clrhist0
+				
+				CLR RSLCD
+				MOV LCDDATA, #0D0H
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				MOV R0, #10H
+				SETB RSLCD
+clrhist1:
+				MOV LCDDATA, #20H
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				DJNZ R0, clrhist1
+
+				CLR RSLCD
+				MOV LCDDATA, #90H
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				
+				MOV R0, #SECMSG
+				MOV R2, SECCNT
+				SETB RSLCD
+cpy2msg:		
+				MOV LCDDATA, @R0
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				INC R0
+				DJNZ R2, cpy2msg
+				
+				CLR RSLCD
+				MOV LCDDATA, #0D0H
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				
+				MOV R0, #THIRMSG
+				MOV R2, THIRCNT
+				SETB RSLCD
+cpy3msg:		
+				MOV LCDDATA, @R0
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				INC R0
+				DJNZ R2, cpy3msg
+				
+				MOV R0, #10H
+				CLR RSLCD
+shiftleft:
+				MOV LCDDATA, #18H
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				DJNZ R0, shiftleft
+				JMP retlcd
+retlcd:			
+				CLR RS0
+				CLR RS1
+				RET
+
+BACKSPACE:		
+				CJNE R2, #00H, bcksp
+				JMP retbcksp
+bcksp:			
+				CLR RSLCD
+				MOV LCDDATA, #10H
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				SETB RSLCD
+				MOV LCDDATA, #20H
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				CLR RSLCD
+				MOV LCDDATA, #10H
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+retbcksp:
+				RET
 
 T1ISR:			
 				;Verifica si tenemos el token, y si no estamos enviando, para
