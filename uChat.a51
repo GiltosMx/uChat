@@ -28,7 +28,7 @@
 				SECNDF	EQU 05H
 				THIRDF	EQU 06H
 				FIRSTBY	EQU 07H
-				SENDING	EQU 28H				
+				SENDING	EQU 28H
 				
 				;Registros accesibles bit a bit
 				EDANT	EQU 21H
@@ -174,7 +174,7 @@ recievedata:
 				CLR FIRSTBY
 				;Mandamos lo recibido al LCD
 				ACALL TOLCD
-				;Reenvia el mensaje al siguiente micro, verificando si mandar el TOKEN
+				;Reenvia el mensaje al siguiente micro
 				ACALL FORWARD
 				JMP retserial
 revdat:			
@@ -247,9 +247,114 @@ PROTOCOL:
 				RET
 				
 TOLCD:			
+				;Limpia la parte del LCD donde se recibe,
+				;despues de recibir el dato en sdata
+				CLR RSLCD
+				MOV LCDDATA, #80H
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				MOV R5, #10H
+				SETB RSLCD
+clarcic1:		
+				MOV LCDDATA, #20H
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				DJNZ R5, clarcic1
+				
+				CLR RSLCD
+				MOV LCDDATA, #80H
+				MOV A, INFOBY
+				ANL A, #0C0H
+				RR A
+				RR A
+				RR A
+				RR A
+				RR A
+				ORL A, #30H
+				SETB RSLCD
+				MOV LCDDATA, A
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				MOV LCDDATA, #3AH
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				SETB RS0
+				SETB RS1
+				MOV R0, #LASTMSG
+				MOV R2, LASTCNT
+tolcdcic:		
+				MOV LCDDATA, @R0
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
+				INC R0
+				DJNZ R2, tolcdcic
+				CLR RS0
+				CLR RS1
+				MOV A, R2
+				ADD A, #0AAH
+				CLR RSLCD
+				MOV LCDDATA, A
+				SETB ELCD
+				NOP
+				CLR ELCD
+				ACALL w10ms
 				RET
 
 FORWARD:		
+				MOV A, INFOBY
+				ANL A, #20H
+				RR A
+				RR A
+				RR A
+				RR A
+				DEC A
+				CJNE A, #00H, contfw
+				JMP retfw
+contfw:			
+				RL A
+				RL A
+				RL A
+				RL A
+				MOV C, INFOBY.7
+				MOV ACC.7, C
+				MOV C, INFOBY.6
+				MOV ACC.6, C
+				MOV C, INFOBY.0
+				MOV ACC.0, C
+				MOV C, INFOBY.1
+				MOV ACC.1, C
+				MOV C, INFOBY.2
+				MOV ACC.2, C
+				MOV C, INFOBY.3
+				MOV ACC.3, C
+				MOV SBUF, A
+				JNB TI, $
+				CLR TI
+				ACALL w10ms
+fwcic:			
+				SETB RS1 					; cambio banco de registros 2
+				CLR RS0
+				MOV R0, #LASTMSG
+				MOV R2, LASTCNT
+fwcic0:
+				MOV SBUF, @R0
+				JNB TI, $
+				CLR TI
+				INC R0
+				DJNZ R2, fwcic0
+				CLR RS1						; cambio banco de registros 0
+				CLR RS0
+retfw:
 				RET
 
 SEND:
@@ -304,7 +409,7 @@ clar:
 				MOV R1, #MYMSG
 				MOV R2, #00H
 				CLR RSLCD
-				MOV LCDDATA, #80H
+				MOV LCDDATA, #0A8H
 				SETB ELCD
 				NOP
 				CLR ELCD
@@ -319,7 +424,7 @@ clarcic:
 				ACALL w10ms
 				DJNZ R5, clarcic
 				CLR RSLCD
-				MOV LCDDATA, #80H
+				MOV LCDDATA, #0A8H
 				SETB ELCD
 				NOP
 				CLR ELCD
@@ -376,7 +481,7 @@ inlcd:
 				CLR ELCD
 				
 				CLR RSLCD
-				MOV LCDDATA, #80H
+				MOV LCDDATA, #0A8H
 				SETB ELCD
 				NOP
 				CLR ELCD
@@ -456,7 +561,7 @@ T0ISR: ;Checa si el boton ALT sigue presionado
 				MOV C, HISTB
 				MOV EDSIG.1, C
 				MOV C, BKSPCB
-				MOV EDSIG.2
+				MOV EDSIG.2, C
 				MOV A, EDANT
 				XRL A, EDSIG
 				MOV C, ACC.0
