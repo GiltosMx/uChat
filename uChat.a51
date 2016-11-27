@@ -26,6 +26,7 @@
 				SECNDF	EQU 05H
 				THIRDF	EQU 06H
 				FIRSTBY	EQU 07H
+				SENDING	EQU 28H				
 				
 				;Registros accesibles bit a bit
 				EDANT	EQU 21H
@@ -51,9 +52,11 @@
 				JMP T0ISR
 				ORG 0013H ;IE1
 				JMP DECO
+				ORG 001BH ;T1
+				JMP T1ISR
 				ORG 0023H ;RI / TI
 				JMP SERIAL
-				ORG 002BH ;T2F
+				ORG 002BH ;T2
 				JMP T2ISR
 				ORG 0040H
 
@@ -77,8 +80,8 @@
 				*/
 				
 main:
-				MOV IE, #10110111b
-				MOV IP, #00110010b
+				MOV IE, #10111111b
+				MOV IP, #00111010b
 				SETB IT0
 				SETB IT1
 				SETB TI
@@ -89,6 +92,7 @@ main:
 				CLR SECNDF
 				CLR THIRDF
 				CLR FIRSTBY
+				CLR SENDING
 				MOV EDANT, #00H
 				MOV EDSIG, #00H
 				SETB ALTF
@@ -99,8 +103,9 @@ main:
 				MOV RCAP2L, #LOW(-10000)
 				MOV RCAP2H, #HIGH(-10000)
 				; Inicializar timer 0 y 1
-				MOV TMOD, #00100001b
-				MOV TH1, #0FDH
+				MOV TMOD, #00101001b
+				MOV TH1, #HIGH(-5000)
+				MOV TH0, #LOW(-5000)
 				SETB TR1
 				MOV TH0, #00H
 				MOV TL0, #00H
@@ -120,8 +125,15 @@ SERIAL:
 				JC retserial
 
 				CLR RI
+				;Verifica si recibimos el token y lo guarda
+				MOV A, SBUF
+				CJNE A, #0FFH, contin
+				MOV C, RB8
+				MOV TOKEN, C
+				JMP retserial
 				;Si INFOM esta prendido, ya recibimos el byte del protocolo
 				;y guardamos el mensaje
+contin:
 				MOV C, INFOM
 				JC savemsg
 				
@@ -226,8 +238,6 @@ retmov:
 				
 PROTOCOL:		
 				MOV INFOBY, SBUF
-				MOV C, RB8
-				MOV TOKEN, C
 				RET
 				
 TOLCD:			
@@ -238,6 +248,7 @@ FORWARD:
 
 SEND:
 				CLR EX0
+				SETB SENDING
 				ACALL w10ms
 				ACALL w10ms
 				ACALL w10ms
@@ -262,8 +273,6 @@ sdata0:
 				RL A
 				ORL A, #30H
 				ORL A, R2
-				MOV C, TOKEN
-				MOV TB8, C
 				MOV SBUF, A
 				JNB TI, $
 				CLR TI
@@ -279,6 +288,7 @@ sdata:
 				CJNE R3, #00H, sdata
 retsnd:			
 				ACALL clar
+				CLR SENDING
 				SETB EX0
 				RETI
 				
@@ -448,6 +458,22 @@ ret0:
 				MOV TL0, #00H
 				POP ACUM
 				MOV A, ACUM
+				RETI
+
+T1ISR:			
+				;Verifica si tenemos el token, y si no estamos enviando, para
+				;saber si mandar el token al siguiente micro
+				CLR TF1
+				MOV TL1, #LOW(-5000)
+				MOV TH1, #HIGH(-5000)
+				JNB TOKEN, retT1
+				JB SENDING, retT1
+				SETB TB8
+				CLR TOKEN
+				MOV SBUF, #0FFH
+				JNB TI, $
+				CLR TI
+retT1:			
 				RETI
 
 Val:
