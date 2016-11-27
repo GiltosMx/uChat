@@ -16,6 +16,8 @@
 				ELCD	EQU P3.7
 				ALTB	EQU P3.4 ;Entrada del boton ALT
 				SENDB	EQU P3.2 ;Entrada del boton SEND
+				HISTB	EQU P3.4
+				BKSPCB	EQU P0.4
 				
 				;Banderas
 				ALTF	EQU 00H
@@ -81,7 +83,7 @@
 				
 main:
 				MOV IE, #10111111b
-				MOV IP, #00111010b
+				MOV IP, #00111000b
 				SETB IT0
 				SETB IT1
 				SETB TI
@@ -119,6 +121,8 @@ main:
 				JMP $
 					
 SERIAL:			
+				MOV ACUM, A
+				PUSH ACUM
 				/*Si fue TI, salimos de la interrupcion, y lo
 				maneja SEND*/
 				MOV C, TI
@@ -140,6 +144,8 @@ contin:
 				SETB INFOM
 				ACALL PROTOCOL ;Guarda el byte de informacion del protocolo
 retserial:
+				POP ACUM
+				MOV A, ACUM
 				RETI
 
 savemsg:		
@@ -447,11 +453,23 @@ T0ISR: ;Checa si el boton ALT sigue presionado
 				CLR TF0
 				MOV C, ALTB
 				MOV EDSIG.0, C
+				MOV C, HISTB
+				MOV EDSIG.1, C
+				MOV C, BKSPCB
+				MOV EDSIG.2
 				MOV A, EDANT
 				XRL A, EDSIG
 				MOV C, ACC.0
-				JNC ret0
+				JNC hischk
 				CPL ALTF
+hischk:			
+				MOV C, ACC.1
+				JNC bkcheck
+				ACALL HISTORY
+bkcheck:		
+				MOV C, ACC.2
+				JNC ret0
+				ACALL BACKSPACE
 ret0:
 				MOV EDANT, EDSIG
 				MOV TH0, #00H
