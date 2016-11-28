@@ -27,7 +27,7 @@
 				LASTF	EQU 04H
 				SECNDF	EQU 05H
 				THIRDF	EQU 06H
-				FIRSTBY	EQU 07H
+				FIRSTBY	EQU 07H ;Primer byte de caracter recibido
 				SENDING	EQU 28H
 				HISTF	EQU 29H
 
@@ -144,9 +144,9 @@ SERIAL:
 				MOV C, RB8
 				MOV TOKEN, C
 				JMP retserial
+contin:
 				;Si INFOM esta prendido, ya recibimos el byte del protocolo
 				;y guardamos el mensaje
-contin:
 				MOV C, INFOM
 				JC savemsg
 
@@ -162,8 +162,10 @@ savemsg:
 				;Si ya tenemos guardado un lastMSG, lo movemos a SCNDMSG
 				JB LASTF, mvmsg1
 
-				;Guardamos cuantos chars vamos a recibir en R3
+				;Cambio al banco de registros 1
 				SETB RS0
+				CLR RS1
+				;Guarda los 4 bits de conteo del protocolo en R3
 				MOV A, INFOBY
 				ANL A, #0FH
 				MOV R3, A
@@ -172,9 +174,10 @@ savemsg:
 				MOV R5, #00H
 				MOV R0, #LASTMSG
 recievedata:
+
 				;Si todavia no acabamos de recibir, guardamos el dato y salimos
 				;de la interrupcion SERIAL
-				CJNE R5, #0BH, revdat
+				CJNE R5, 0BH, revdat ;CJNE R5, R3, revdat
 				;Ya recibimos todos los chars. Limpiamos todas las banderas de control
 				;para dejarlo listo para otra recepcion de chars.
 				SETB LASTF
@@ -187,6 +190,7 @@ recievedata:
 				ACALL FORWARD
 				JMP retserial
 revdat:
+				SETB FIRSTBY
 				MOV @R0, SBUF
 				INC R0
 				INC R5
@@ -196,19 +200,22 @@ mvmsg1:
 				JB SECNDF, mvmsg2
 mvmsg1A:
 				;Copiamos del primer mensaje, al segundo
-				SETB RS0			; Cambio a banco de registros 1
+
+				; Cambio a banco de registros 1
+				SETB RS0
+				CLR RS1
 				;Establecer apuntadores de lectura y copia
 				MOV R0, #LASTMSG
 				MOV R1, #SECMSG
 				MOV R2, LASTCNT
 mv1cic:
-				;MOV @R1, @R0
+				;MOV @R1, @R0 Copia char del LAST al SECND
 				MOV A, @R0
 				MOV @R1, A
-				;Copiamos el contador de chars del LAST al SCND
 				INC R0
 				INC R1
 				DJNZ R2, mv1cic
+				;Copiamos el contador de chars del LAST al SCND
 				MOV R0, #SECCNT
 				MOV @R0, LASTCNT
 				SETB SECNDF
@@ -234,23 +241,26 @@ mv2cic:
 				JMP mvmsg1A
 retmov:
 				SETB FIRSTBY
-				;Copiar un byte de mensaje, inicializaci�n de registros
-				; Recibir el dato
-				SETB RS0			; Cambio a banco de registros 1
+				;Copiar un byte de mensaje, inicializacion de registros. Recibir el dato
+				; Cambio a banco de registros 1
+				CLR RS1
+				SETB RS0
 
+				;R3 = Conteo chars recibidos de INFOBY
 				MOV A, INFOBY
 				ANL A, #0FH
 				MOV R3, A
+				;Inicializa contador de chars recibidos R5 y pointer a LASTMSG
 				MOV R5, #00H
 				MOV R0, #LASTMSG
 
 				MOV @R0, SBUF
 				INC R0
 				INC R5
-				CLR RS0				; Cambio a banco de registros 0
+				;Cambio a banco de registros 0
+				CLR RS0
+				CLR RS1
 				JMP retserial
-
-
 PROTOCOL:
 				MOV INFOBY, SBUF
 				RET
