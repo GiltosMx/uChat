@@ -14,10 +14,10 @@
 				TECLADO	EQU P0 ;Entrada de 4 bits, del teclado matricial
 				RSLCD	EQU P3.6
 				ELCD	EQU P3.7
-				ALTB	EQU P3.4 ;Entrada del boton ALT
-				SENDB	EQU P3.2 ;Entrada del boton SEND
-				HISTB	EQU P3.4
-				BKSPCB	EQU P0.4
+				ALTB	EQU P1.0 ;Entrada del boton ALT
+				SENDB	EQU P3.3 ;Entrada del boton SEND
+				HISTB	EQU P1.2
+				BKSPCB	EQU P1.1
 
 				;Banderas
 				ALTF	EQU 00H
@@ -50,11 +50,11 @@
 				ORG 0000H
 				JMP main
 				ORG 0003H ;IEX0
-				JMP SEND
+				JMP DECO
 				ORG 000BH ;T0
 				JMP T0ISR
 				ORG 0013H ;IE1
-				JMP DECO
+				JMP SEND
 				ORG 001BH ;T1
 				JMP T1ISR
 				ORG 0023H ;RI / TI
@@ -94,16 +94,16 @@ main:
 				;Inicializar Banderas
 				SETB IT0
 				SETB IT1
-				SETB TI
-				SETB RI
 				SETB TOKEN ;SOLO SI ES EL MICRO 00
+				;CLR TOKEN
 				CLR INFOM
 				CLR LASTF
 				CLR SECNDF
 				CLR THIRDF
 				CLR FIRSTBY
 				CLR SENDING
-				CLR HISTF
+				SETB HISTF
+				SETB BKSPCB
 				MOV EDANT, #00H
 				MOV EDSIG, #00H
 				SETB ALTF
@@ -116,17 +116,21 @@ main:
 				; Inicializar timer 0 y 1
 				MOV TMOD, #00101001b
 				MOV TH1, #HIGH(-5000)
-				MOV TH0, #LOW(-5000)
-				SETB TR1
+				MOV TL1, #LOW(-5000)
 				MOV TH0, #00H
 				MOV TL0, #00H
-				SETB TR0
 				; Inicializar puerto serial modo 2 UART 9 bits velocidad fija
 				MOV SCON, #10010000b
 				MOV SP, #5FH
 				MOV R1, #MYMSG
 				MOV R2, #00H
 				ACALL inlcd
+				SETB TI
+				NOP
+				CLR TI
+				;SETB RI
+				SETB TR0
+				SETB TR1
 				JMP $
 
 SERIAL:
@@ -177,7 +181,8 @@ recievedata:
 
 				;Si todavia no acabamos de recibir, guardamos el dato y salimos
 				;de la interrupcion SERIAL
-				CJNE R5, 0BH, revdat ;CJNE R5, R3, revdat
+				MOV A, R5
+				CJNE A, 0BH, revdat ;CJNE R5, R3, revdat
 				;Ya recibimos todos los chars. Limpiamos todas las banderas de control
 				;para dejarlo listo para otra recepcion de chars.
 				SETB LASTF
@@ -498,13 +503,14 @@ inlcd:
 				SETB ELCD
 				NOP
 				CLR ELCD
-
+				ACALL w10ms
 				CLR RSLCD
 				MOV LCDDATA, #0C0H
 				SETB ELCD
 				NOP
 				CLR ELCD
 				ACALL w10ms
+				SETB RSLCD
 				MOV A, #YO
 				ORL A, #30H
 				MOV LCDDATA, A
