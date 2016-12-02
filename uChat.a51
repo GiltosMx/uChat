@@ -47,15 +47,15 @@
 					THIRCNT	EQU 2EH
 					THRSNDR EQU 2FH						
 					
-					/*
-					** BANCO DE REGISTROS 0:
-					** R4 - Digito alto de ALT
-					** R1 - Indice de DATOs
-					** R2 - Contador de DATOs
-					** R3 - Contador auxiliar
-					** R0 - Indice auxiliar
-					*/
-					
+;					/*
+;					** BANCO DE REGISTROS 0:
+;					** R4 - Digito alto de ALT
+;					** R1 - Indice de DATOs
+;					** R2 - Contador de DATOs
+;					** R3 - Contador auxiliar
+;					** R0 - Indice auxiliar
+;					*/
+;					
 					ORG 0000H
 					JMP main
 					ORG 0003H ;EX0
@@ -71,7 +71,9 @@
 					ORG 0040H
 
 main:
-					MOV IE, #10110111b
+					;CLR P0.5
+					; Inicializar puerto serial
+					MOV IE, #10110111b;MOV IE, #10100111b
 					MOV IP, #00110010b
 					SETB IT0
 					SETB IT1
@@ -83,8 +85,8 @@ main:
 					MOV T2CON, #00H
 					MOV T2MOD, #00H
 					; Poner valores de autorrecarga desborde T2 cada 10 ms
-					MOV RCAP2L, #LOW(-10000)
-					MOV RCAP2H, #HIGH(-10000)
+					MOV RCAP2L, #0F0H
+					MOV RCAP2H, #0D8H
 					; Inicializar timer 0 y 1
 					MOV TMOD, #00100001b
 					MOV TH1, #0FDH
@@ -92,8 +94,7 @@ main:
 					MOV TH0, #00H
 					MOV TL0, #00H
 					SETB TR0
-					; Inicializar puerto serial
-					MOV SCON, #01010000b
+					MOV SCON, #01010000b ;MOV SCON, #01000000b
 					MOV SP, #3FH
 					MOV R1, #80H
 					MOV R2, #00H
@@ -187,6 +188,7 @@ SEND:
 					ACALL W10MS
 					MOV C, SENDB
 					JC retsnd
+
 					;Contador total de chars escritos al contador temporal R3
 					MOV R3, 02H
 					;Pointer al inicio de datos del mensaje local
@@ -208,6 +210,7 @@ genctrlbyte:
 					RL A
 					ORL A, #00110000B
 					ORL A, R2
+					;SETB TI
 					MOV SBUF, A
 					JNB TI, $
 					CLR TI
@@ -277,17 +280,17 @@ SERIAL:
 					;Banco registros 1
 					SETB RS0
 					CLR RS1
-					/*Si fue TI, salimos de la interrupcion, y lo
-					maneja SEND*/
+;					/*Si fue TI, salimos de la interrupcion, y lo
+;					maneja SEND*/
 					MOV C, TI					
 					JC retserial
 					
 					CLR RI
 					;Verifica si recibimos el token y lo guarda
-					/*MOV A, SBUF
-					CJNE A, #0FFH, contin					
-					SETB TOKEN
-					JMP retserial*/
+;					/*MOV A, SBUF
+;					CJNE A, #0FFH, contin					
+;					SETB TOKEN
+;					JMP retserial*/
 					
 contin:
 					;Si INFOM esta prendido, ya recibimos el byte del protocolo
@@ -318,6 +321,8 @@ recievedata:
 					;de la interrupcion SERIAL
 					MOV A, R5
 					CJNE A, 0BH, revdat ;CJNE R5, R3, revdat
+					
+endrecieve:
 					;Ya recibimos todos los chars. Limpiamos todas las banderas de control
 					;para dejarlo listo para otra recepcion de chars.
 					;SETB LASTF
@@ -336,7 +341,7 @@ recievedata:
 					
 					CLR INFOM
 					;Mandamos lo recibido al LCD
-					ACALL TOLCD
+					;ACALL TOLCD
 					;Reenvia el mensaje al siguiente micro
 					;ACALL FORWARD
 					JMP retserial
@@ -344,7 +349,11 @@ revdat:
 					MOV @R0, SBUF
 					INC R0
 					INC R5
-					JMP retserial
+
+					MOV A, R5
+					CJNE A, 0BH, retserial
+					
+					JMP endrecieve
 
 retserial:										
 					;Banco registros 0
@@ -372,8 +381,7 @@ tolcdloop:
 					NOP
 					CLR ELCD					
 					ACALL w10ms
-					INC R1
-										
+					INC R1				
 					DJNZ R5, tolcdloop 
 					RET
 
