@@ -6,11 +6,18 @@
 					TH2		EQU 0CDH
 					TR2		EQU 0CAH
 					TF2		EQU 0CFH
+					
+					;Banderas
 					ALTF	EQU 00H
 					ALTDAT	EQU 01H
-					EDANT	EQU 21H
-					EDSIG	EQU 22H
-					ACUM	EQU 23H
+					INFOM   EQU 02H	
+					
+					;Acceso bit a bit	
+					EDANT	EQU 22H
+					EDSIG	EQU 23H
+					ACUM	EQU 24H
+					ACUM2	EQU 25H
+					INFOBY	EQU 26H
 						
 					YO		EQU 00H
 						
@@ -23,12 +30,28 @@
 					SENDB	EQU P3.3 ;Entrada del boton SEND
 					HISTB	EQU P1.2
 					BKSPCB	EQU P1.1
+						
+						
+					;Memoria de proposito general (bytes)
+					MYMSG	EQU 80H
+					LASTMSG	EQU 8EH					
+					SECMSG	EQU 9CH				
+					THIRMSG	EQU 0AAH
+					
+
+					;Accesibles bit a bit (Mensajes guardados) (bytes)
+					LASTCNT	EQU 2AH
+					LSTSNDR EQU	2BH					
+					SECCNT	EQU 2CH
+					SECSNDR EQU 2DH	
+					THIRCNT	EQU 2EH
+					THRSNDR EQU 2FH						
 					
 					/*
 					** BANCO DE REGISTROS 0:
 					** R4 - Digito alto de ALT
-					** R1 - Indice de datos
-					** R2 - Contador de datos
+					** R1 - Indice de DATOs
+					** R2 - Contador de DATOs
 					** R3 - Contador auxiliar
 					** R0 - Indice auxiliar
 					*/
@@ -39,15 +62,17 @@
 					JMP DECO
 					ORG 000BH
 					JMP T0ISR
-					/*ORG 0013H
-					JMP SEND*/
+					ORG 0013H ;EX1
+					JMP SEND
+					ORG 0023H
+					JMP SERIAL
 					ORG 002BH
 					JMP T2ISR
 					ORG 0040H
 
 main:
-					MOV IE, #10100011b
-					MOV IP, #00100010b
+					MOV IE, #10110111b
+					MOV IP, #00110010b
 					SETB IT0
 					SETB IT1
 					SETB TI
@@ -68,14 +93,15 @@ main:
 					MOV TL0, #00H
 					SETB TR0
 					; Inicializar puerto serial
-					MOV SCON, #01000000b
-					MOV SP, #5FH
+					MOV SCON, #01010000b
+					MOV SP, #3FH
 					MOV R1, #80H
 					MOV R2, #00H
-					ACALL inlcd
+					CLR RI
+					ACALL INLCD					
 					JMP $
 						
-w10ms:	
+W10MS:	
 					SETB TR2
 					JNB TF2, $
 					CLR TR2		
@@ -85,42 +111,151 @@ w10ms:
 T2ISR:	
 					CLR TF2
 					RETI
-inlcd:	
+INLCD:	
 					CLR RSLCD					; modo de instruccion
-					ACALL w10ms
-					ACALL w10ms
+					ACALL W10MS
+					ACALL W10MS
 					MOV LCDDATA, #38H
 					SETB ELCD
 					NOP
 					CLR ELCD
-					ACALL w10ms
+					ACALL W10MS
 					MOV LCDDATA, #38H
 					SETB ELCD
 					NOP
 					CLR ELCD
-					ACALL w10ms
+					ACALL W10MS
 					MOV LCDDATA, #38H
 					SETB ELCD
 					NOP
 					CLR ELCD
-					ACALL w10ms
+					ACALL W10MS
 					MOV LCDDATA, #01H
 					SETB ELCD
 					NOP
 					CLR ELCD
-					ACALL w10ms
+					ACALL W10MS
 					MOV LCDDATA, #0FH			; Mostrar cursor parpadeando
 					SETB ELCD
 					NOP
 					CLR ELCD
-					ACALL w10ms
+					ACALL W10MS
 					CLR RSLCD
 					;Muestra Yo y pone el cursor en la segunda linea
 					MOV LCDDATA, #0C0H
 					SETB ELCD
 					NOP
 					CLR ELCD
+					ACALL W10MS
+					SETB RSLCD
+					MOV A, #YO
+					ORL A, #30H
+					MOV LCDDATA, A
+					SETB ELCD
+					NOP
+					CLR ELCD
+					ACALL W10MS
+					MOV LCDDATA, #3AH
+					SETB ELCD
+					NOP
+					CLR ELCD
+					ACALL W10MS
+					RET	
+
+DATO:
+					MOV ACUM, A
+					;Manda DATOs al LCD
+					INC R2
+					MOV @R1, A
+					INC R1
+					; Mostrar DATO el LCD
+					SETB RSLCD
+					MOV LCDDATA, A
+					SETB ELCD
+					NOP
+					CLR ELCD
+					ACALL W10MS
+					MOV A, ACUM
+					RET
+
+SEND:	
+					CLR EX1
+					ACALL W10MS
+					ACALL W10MS
+					ACALL W10MS
+					ACALL W10MS
+					ACALL W10MS
+					MOV C, SENDB
+					JC retsnd
+					;Contador total de chars escritos al contador temporal R3
+					MOV R3, 02H
+					;Pointer al inicio de datos del mensaje local
+					MOV R0, #MYMSG
+					
+					CJNE R3, #00H, genctrlbyte
+										
+					JMP retsnd
+					
+genctrlbyte:
+					;Genera el byte de protocolo y lo manda
+					CLR A
+					MOV A, #YO
+					RL A
+					RL A
+					RL A
+					RL A
+					RL A
+					RL A
+					ORL A, #00110000B
+					ORL A, R2
+					MOV SBUF, A
+					JNB TI, $
+					CLR TI
 					ACALL w10ms
+
+sdata:	
+					MOV SBUF, @R0
+					JNB TI, $
+					CLR TI
+					INC R0
+					DEC R3
+					CJNE R3, #00H, sdata
+					ACALL KLAR
+					
+retsnd:	
+					SETB EX1
+					RETI
+
+
+KLAR:					
+					;Limpia la parte del LCD donde se escribe,
+					;despues de mandar el dato en sdata
+					MOV R1, #MYMSG
+					MOV R2, #00H
+					CLR RSLCD
+					MOV LCDDATA, #0C0H
+					SETB ELCD
+					NOP
+					CLR ELCD
+					ACALL w10ms
+					;R5 = Contador de chars a escribir
+					MOV R5, #10H
+					SETB RSLCD
+klarcic:
+					MOV LCDDATA, #20H
+					SETB ELCD
+					NOP
+					CLR ELCD
+					ACALL w10ms
+					DJNZ R5, klarcic
+					
+					CLR RSLCD
+					MOV LCDDATA, #0C0H
+					SETB ELCD
+					NOP
+					CLR ELCD
+					ACALL w10ms
+					
 					SETB RSLCD
 					MOV A, #YO
 					ORL A, #30H
@@ -129,31 +264,121 @@ inlcd:
 					NOP
 					CLR ELCD
 					ACALL w10ms
+					
 					MOV LCDDATA, #3AH
 					SETB ELCD
 					NOP
 					CLR ELCD
-					ACALL w10ms
-					RET	
+					ACALL w10ms				
+					RET
+					
+SERIAL:
+					MOV ACUM2, A
+					;Banco registros 1
+					SETB RS0
+					CLR RS1
+					/*Si fue TI, salimos de la interrupcion, y lo
+					maneja SEND*/
+					MOV C, TI					
+					JC retserial
+					
+					CLR RI
+					;Verifica si recibimos el token y lo guarda
+					/*MOV A, SBUF
+					CJNE A, #0FFH, contin					
+					SETB TOKEN
+					JMP retserial*/
+					
+contin:
+					;Si INFOM esta prendido, ya recibimos el byte del protocolo
+					;y guardamos el mensaje					
+					JB INFOM, savemsg
 
-dato:
-					MOV ACUM, A
-					;Manda datos al LCD
-					INC R2
-					MOV @R1, A
-					INC R1
-					; Mostrar dato el LCD
-					SETB RSLCD
-					MOV LCDDATA, A
+					SETB INFOM
+					
+					MOV INFOBY, SBUF
+					
+					;Guarda los 4 bits de conteo del protocolo en R3
+					MOV A, INFOBY
+					ANL A, #0FH
+					MOV R3, A
+					
+					;Inicializamos el contador R5 (datos ya recibidos)
+					;y el apuntador de donde inicia LASTMSG para guardar los chars
+					MOV R5, #00H
+					MOV R0, #LASTMSG
+					
+					JMP retserial										
+savemsg:
+					
+
+recievedata:
+
+					;Si todavia no acabamos de recibir, guardamos el dato y salimos
+					;de la interrupcion SERIAL
+					MOV A, R5
+					CJNE A, 0BH, revdat ;CJNE R5, R3, revdat
+					;Ya recibimos todos los chars. Limpiamos todas las banderas de control
+					;para dejarlo listo para otra recepcion de chars.
+					;SETB LASTF
+					MOV LASTCNT, R3
+					
+					;Guardamos el micro remitente
+					MOV A, INFOBY
+					ANL A, #0C0H
+					RR A
+					RR A
+					RR A
+					RR A
+					RR A
+					RR A
+					MOV LSTSNDR, A				
+					
+					CLR INFOM
+					;Mandamos lo recibido al LCD
+					ACALL TOLCD
+					;Reenvia el mensaje al siguiente micro
+					;ACALL FORWARD
+					JMP retserial
+revdat:					
+					MOV @R0, SBUF
+					INC R0
+					INC R5
+					JMP retserial
+
+retserial:										
+					;Banco registros 0
+					CLR RS0
+					CLR RS1															
+					MOV A, ACUM2
+					RETI
+
+TOLCD:									
+					;Limpia la parte del LCD donde se recibe,
+					;despues de recibir el dato en sdata
+					CLR RSLCD
+					MOV LCDDATA, #80H
 					SETB ELCD
 					NOP
 					CLR ELCD
 					ACALL w10ms
-					MOV A, ACUM
+					
+					MOV R5, LASTCNT					
+					MOV R1, #LASTMSG
+					SETB RSLCD
+tolcdloop:				
+					MOV LCDDATA, @R1					
+					SETB ELCD
+					NOP
+					CLR ELCD					
+					ACALL w10ms
+					INC R1
+										
+					DJNZ R5, tolcdloop 
 					RET
 
 DECO: 
-					;Recibe dato del teclado matricial y lo decodifica
+					;Recibe DATO del teclado matricial y lo decodifica
 					;Verifica que no se hayan escrito los 14 chars disponibles
 					MOV ACUM, A
 					CLR RS0
@@ -173,19 +398,19 @@ alt:
 					ANL A, #0FH
 					MOV DPTR, #Val2
 					MOVC A, @A+DPTR
-					JB ALTDAT, dato2
-dato1:
+					JB ALTDAT, DATO2
+DATO1:
 					SWAP A
 					MOV R4, A
 					SETB ALTDAT
 					JMP retdec1
-dato2:
+DATO2:
 					ORL A, R4
 					CLR ALTDAT
 					MOV R4, #00H
 					JB ALTF, $
 retdec:
-					ACALL dato
+					ACALL DATO
 retdec1:
 					MOV A, ACUM
 					CLR RS0
@@ -227,7 +452,7 @@ bcksp:
 					SETB ELCD
 					NOP
 					CLR ELCD
-					ACALL w10ms					
+					ACALL W10MS					
 retbcksp:
 					RET
 
