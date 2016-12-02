@@ -77,7 +77,8 @@ main:
 					MOV IP, #00110010b
 					SETB IT0
 					SETB IT1
-					SETB TI
+					
+					CLR RI
 					MOV EDANT, #00H
 					MOV EDSIG, #00H
 					SETB ALTF
@@ -98,7 +99,7 @@ main:
 					MOV SP, #3FH
 					MOV R1, #80H
 					MOV R2, #00H
-					CLR RI
+					CLR TI
 					ACALL INLCD					
 					JMP $
 						
@@ -282,7 +283,7 @@ SERIAL:
 					CLR RS1
 ;					/*Si fue TI, salimos de la interrupcion, y lo
 ;					maneja SEND*/
-					MOV C, TI					
+					MOV C, TI
 					JC retserial
 					
 					CLR RI
@@ -314,9 +315,7 @@ contin:
 					JMP retserial										
 savemsg:
 					
-
 recievedata:
-
 					;Si todavia no acabamos de recibir, guardamos el dato y salimos
 					;de la interrupcion SERIAL
 					MOV A, R5
@@ -337,11 +336,11 @@ endrecieve:
 					RR A
 					RR A
 					RR A
-					MOV LSTSNDR, A				
+					MOV LSTSNDR, A
 					
 					CLR INFOM
 					;Mandamos lo recibido al LCD
-					;ACALL TOLCD
+					ACALL TOLCD
 					;Reenvia el mensaje al siguiente micro
 					;ACALL FORWARD
 					JMP retserial
