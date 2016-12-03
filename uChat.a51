@@ -19,7 +19,7 @@
 					ACUM2	EQU 25H
 					INFOBY	EQU 26H
 						
-					YO		EQU 00H
+					YO		EQU 01H
 						
 					;I/O
 					LCDDATA	EQU P2 ;Salida al LCD
@@ -73,6 +73,7 @@
 main:
 					;CLR P0.5
 					; Inicializar puerto serial
+					MOV SP, #3FH
 					MOV IE, #10110111b;MOV IE, #10100111b
 					MOV IP, #00110010b
 					SETB IT0
@@ -96,11 +97,11 @@ main:
 					MOV TL0, #00H
 					SETB TR0
 					MOV SCON, #01010000b ;MOV SCON, #01000000b
-					MOV SP, #3FH
+					;MOV SP, #3FH
 					MOV R1, #80H
 					MOV R2, #00H
+					ACALL INLCD	
 					CLR TI
-					ACALL INLCD					
 					JMP $
 						
 W10MS:	
@@ -221,9 +222,9 @@ sdata:
 					MOV SBUF, @R0
 					JNB TI, $
 					CLR TI
+					ACALL w10ms
 					INC R0
-					DEC R3
-					CJNE R3, #00H, sdata
+					DJNZ R3, sdata
 					ACALL KLAR
 					
 retsnd:	
@@ -357,7 +358,7 @@ revdat:
 retserial:										
 					;Banco registros 0
 					CLR RS0
-					CLR RS1															
+					CLR RS1
 					MOV A, ACUM2
 					RETI
 
@@ -371,17 +372,83 @@ TOLCD:
 					CLR ELCD
 					ACALL w10ms
 					
-					MOV R5, LASTCNT					
-					MOV R1, #LASTMSG
+					MOV R5, #10H
+					
+tolcdclr:			
 					SETB RSLCD
-tolcdloop:				
-					MOV LCDDATA, @R1					
+					MOV LCDDATA, #20H
 					SETB ELCD
 					NOP
-					CLR ELCD					
+					CLR ELCD
 					ACALL w10ms
-					INC R1				
+					ACALL w10ms
+					ACALL w10ms
+					DJNZ R5, tolcdclr
+					
+					ACALL w10ms
+					ACALL w10ms
+					ACALL w10ms
+					CLR RSLCD
+					MOV LCDDATA, #80H
+					SETB ELCD
+					NOP
+					CLR ELCD
+					ACALL w10ms
+					
+					ACALL w10ms
+					ACALL w10ms
+					ACALL w10ms
+					MOV A, LSTSNDR
+					ORL A, #30H
+					SETB RSLCD
+					MOV LCDDATA, A
+					SETB ELCD
+					NOP
+					CLR ELCD
+					ACALL w10ms
+					
+					ACALL w10ms
+					ACALL w10ms
+					ACALL w10ms
+					MOV LCDDATA, #3AH
+					SETB ELCD
+					NOP
+					CLR ELCD
+					ACALL w10ms
+					
+					MOV R5, LASTCNT					
+					MOV R1, #LASTMSG
+					
+tolcdloop:				
+					ACALL w10ms
+					ACALL w10ms
+					ACALL w10ms
+					SETB RSLCD
+					MOV LCDDATA, @R1
+					SETB ELCD
+					NOP
+					NOP
+					NOP
+					NOP
+					NOP
+					NOP
+					CLR ELCD
+					ACALL w10ms
+					INC R1
 					DJNZ R5, tolcdloop 
+					
+					ACALL w10ms
+					ACALL w10ms
+					ACALL w10ms
+					MOV A, #0C2H
+					ADD A, 02H
+					CLR RSLCD
+					MOV LCDDATA, A
+					SETB ELCD
+					NOP
+					CLR ELCD
+					ACALL w10ms
+					
 					RET
 
 DECO: 
