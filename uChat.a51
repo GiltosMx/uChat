@@ -11,6 +11,8 @@
 					ALTF	EQU 00H
 					ALTDAT	EQU 01H
 					INFOM   EQU 02H	
+					;TOKEN	EQU 03H
+					;SENDING	EQU 04H
 					
 					;Acceso bit a bit	
 					EDANT	EQU 22H
@@ -19,7 +21,7 @@
 					ACUM2	EQU 25H
 					INFOBY	EQU 26H
 						
-					YO		EQU 01H
+					YO		EQU 00H
 						
 					;I/O
 					LCDDATA	EQU P2 ;Salida al LCD
@@ -79,6 +81,10 @@ main:
 					SETB IT0
 					SETB IT1
 					
+					;SETB TOKEN ; Sólo micro 0
+					;CLR TOKEN ; Micros 1 y 2
+					
+					;CLR SENDING
 					CLR RI
 					MOV EDANT, #00H
 					MOV EDSIG, #00H
@@ -191,16 +197,20 @@ SEND:
 					MOV C, SENDB
 					JC retsnd
 
+					CLR RS0
+					CLR RS1
 					;Contador total de chars escritos al contador temporal R3
 					MOV R3, 02H
 					;Pointer al inicio de datos del mensaje local
 					MOV R0, #MYMSG
 					
 					CJNE R3, #00H, genctrlbyte
-										
+					
 					JMP retsnd
 					
 genctrlbyte:
+					;SETB SENDING
+					;JNB TOKEN, $
 					;Genera el byte de protocolo y lo manda
 					CLR A
 					MOV A, #YO
@@ -217,15 +227,18 @@ genctrlbyte:
 					JNB TI, $
 					CLR TI
 					ACALL w10ms
+					ACALL W10MS
 
 sdata:	
 					MOV SBUF, @R0
 					JNB TI, $
 					CLR TI
-					ACALL w10ms
+					ACALL W10MS
+					ACALL W10MS
 					INC R0
 					DJNZ R3, sdata
 					ACALL KLAR
+					;CLR SENDING
 					
 retsnd:	
 					SETB EX1
@@ -277,6 +290,60 @@ klarcic:
 					ACALL w10ms				
 					RET
 					
+					
+FORWARD:
+					; Cambiamos a banco de registros 2
+					CLR RS0
+					SETB RS1
+					
+					MOV A, INFOBY
+					ANL A, #30H
+					RR A
+					RR A
+					RR A
+					RR A
+					DEC A
+					CJNE A, #00H, contfw
+					JMP retfw0
+contfw:
+					RL A
+					RL A
+					RL A
+					RL A
+					ANL A, #30H
+					MOV R3, A	
+					MOV A, INFOBY
+					ANL A, #0CFH
+					ORL A, R3
+					MOV INFOBY, A
+					
+					MOV SBUF, INFOBY
+					JNB TI, $
+					CLR TI
+					ACALL W10MS
+					ACALL W10MS
+					
+					MOV R0, #LASTMSG
+					MOV R2, LASTCNT
+					
+fwcic:
+					MOV SBUF, @R0
+					JNB TI, $
+					CLR TI
+					INC R0
+					ACALL W10MS
+					ACALL W10MS
+					DJNZ R2, fwcic
+					JMP retfw
+retfw0:				
+					;CLR SENDING
+retfw:
+					; Cambiamos a banco de registros 0
+					CLR RS0
+					CLR RS1
+					RET
+
+
 SERIAL:
 					MOV ACUM2, A
 					;Banco registros 1
@@ -289,10 +356,10 @@ SERIAL:
 					
 					CLR RI
 					;Verifica si recibimos el token y lo guarda
-;					/*MOV A, SBUF
-;					CJNE A, #0FFH, contin					
-;					SETB TOKEN
-;					JMP retserial*/
+					;MOV A, SBUF
+					;CJNE A, #0FFH, contin
+					;SETB TOKEN
+					;JMP retserial
 					
 contin:
 					;Si INFOM esta prendido, ya recibimos el byte del protocolo
@@ -313,7 +380,7 @@ contin:
 					MOV R5, #00H
 					MOV R0, #LASTMSG
 					
-					JMP retserial										
+					JMP retserial
 savemsg:
 					
 recievedata:
@@ -343,9 +410,9 @@ endrecieve:
 					;Mandamos lo recibido al LCD
 					ACALL TOLCD
 					;Reenvia el mensaje al siguiente micro
-					;ACALL FORWARD
+					ACALL FORWARD
 					JMP retserial
-revdat:					
+revdat:
 					MOV @R0, SBUF
 					INC R0
 					INC R5
@@ -376,6 +443,9 @@ TOLCD:
 					
 tolcdclr:			
 					SETB RSLCD
+					ACALL w10ms
+					ACALL w10ms
+					ACALL w10ms
 					MOV LCDDATA, #20H
 					SETB ELCD
 					NOP
@@ -494,6 +564,16 @@ retdec1:
 T0ISR:	
 					MOV ACUM, A
 					CLR TF0
+					
+					;Verifica si ya puede mandar el token
+					;JNB TOKEN, contT0
+					;JB SENDING, contT0
+					;MOV SBUF, #0FFH
+					;JNB TI, $
+					;CLR TI
+					;CLR TOKEN
+					
+contT0:
 					MOV C, ALTB
 					MOV EDSIG.0, C
 					MOV C, BKSPCB
