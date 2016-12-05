@@ -6,23 +6,23 @@
 					TH2		EQU 0CDH
 					TR2		EQU 0CAH
 					TF2		EQU 0CFH
-					
+
 					;Banderas
 					ALTF	EQU 00H
 					ALTDAT	EQU 01H
-					INFOM   EQU 02H	
+					INFOM   EQU 02H
 					;TOKEN	EQU 03H
 					;SENDING	EQU 04H
-					
-					;Acceso bit a bit	
+
+					;Acceso bit a bit
 					EDANT	EQU 22H
 					EDSIG	EQU 23H
 					ACUM	EQU 24H
 					ACUM2	EQU 25H
 					INFOBY	EQU 26H
-					
+
 					YO		EQU 02H
-					
+
 					;I/O
 					LCDDATA	EQU P2 ;Salida al LCD
 					TECLADO	EQU P0 ;Entrada de 4 bits, del teclado matricial
@@ -32,23 +32,23 @@
 					SENDB	EQU P3.3 ;Entrada del boton SEND
 					HISTB	EQU P1.2
 					BKSPCB	EQU P1.0
-					
-					
+
+
 					;Memoria de proposito general (bytes)
 					MYMSG	EQU 80H
-					LASTMSG	EQU 8EH					
-					SECMSG	EQU 9CH				
+					LASTMSG	EQU 8EH
+					SECMSG	EQU 9CH
 					THIRMSG	EQU 0AAH
-					
+
 
 					;Accesibles bit a bit (Mensajes guardados) (bytes)
 					LASTCNT	EQU 2AH
-					LSTSNDR EQU	2BH					
+					LSTSNDR EQU	2BH
 					SECCNT	EQU 2CH
-					SECSNDR EQU 2DH	
+					SECSNDR EQU 2DH
 					THIRCNT	EQU 2EH
-					THRSNDR EQU 2FH						
-					
+					THRSNDR EQU 2FH
+
 ;					/*
 ;					** BANCO DE REGISTROS 0:
 ;					** R4 - Digito alto de ALT
@@ -57,7 +57,7 @@
 ;					** R3 - Contador auxiliar
 ;					** R0 - Indice auxiliar
 ;					*/
-;					
+;
 					ORG 0000H
 					JMP main
 					ORG 0003H ;EX0
@@ -81,10 +81,10 @@ main:
 					SETB IT0
 					SETB IT1
 					CLR INFOM
-					
-					;SETB TOKEN ; Sólo micro 0
+
+					;SETB TOKEN ; Solo micro 0
 					;CLR TOKEN ; Micros 1 y 2
-					
+
 					;CLR SENDING
 					CLR RI
 					MOV EDANT, #00H
@@ -107,21 +107,21 @@ main:
 					;MOV SP, #3FH
 					MOV R1, #80H
 					MOV R2, #00H
-					ACALL INLCD	
+					ACALL INLCD
 					CLR TI
 					JMP $
-					
-W10MS:	
+
+W10MS:
 					SETB TR2
 					JNB TF2, $
-					CLR TR2		
+					CLR TR2
 					RET
-					
-					
-T2ISR:	
+
+
+T2ISR:
 					CLR TF2
 					RETI
-INLCD:	
+INLCD:
 					CLR RSLCD					; modo de instruccion
 					ACALL W10MS
 					ACALL W10MS
@@ -170,7 +170,7 @@ INLCD:
 					NOP
 					CLR ELCD
 					ACALL W10MS
-					RET	
+					RET
 
 DATO:
 					MOV ACUM, A
@@ -188,7 +188,7 @@ DATO:
 					MOV A, ACUM
 					RET
 
-SEND:	
+SEND:
 					CLR EX0
 					ACALL W10MS
 					ACALL W10MS
@@ -204,11 +204,11 @@ SEND:
 					MOV R3, 02H
 					;Pointer al inicio de datos del mensaje local
 					MOV R0, #MYMSG
-					
+
 					CJNE R3, #00H, genctrlbyte
-					
+
 					JMP retsnd
-					
+
 genctrlbyte:
 					;SETB SENDING
 					;JNB TOKEN, $
@@ -234,7 +234,7 @@ genctrlbyte:
 					ACALL W10MS
 					ACALL W10MS
 
-sdata:	
+sdata:
 					MOV SBUF, @R0
 					JNB TI, $
 					CLR TI
@@ -248,13 +248,13 @@ sdata:
 					DJNZ R3, sdata
 					ACALL WRITEOWN
 					ACALL KLAR
-					
+
 					;CLR SENDING
-					
-retsnd:	
+
+retsnd:
 					SETB EX0
 					RETI
-					
+
 
 WRITEOWN:
 					CLR RSLCD
@@ -265,9 +265,9 @@ WRITEOWN:
 					ACALL w10ms
 					ACALL w10ms
 					ACALL w10ms
-					
+
 					MOV R5, #10H
-writeonwclr:	
+writeonwclr:
 					SETB RSLCD
 					MOV LCDDATA, #20H
 					SETB ELCD
@@ -277,7 +277,7 @@ writeonwclr:
 					ACALL w10ms
 					ACALL w10ms
 					DJNZ R5, writeonwclr
-					
+
 					CLR RSLCD
 					MOV LCDDATA, #80H
 					SETB ELCD
@@ -286,7 +286,7 @@ writeonwclr:
 					ACALL w10ms
 					ACALL w10ms
 					ACALL w10ms
-					
+
 					MOV A, #YO
 					ORL A, #30H
 					SETB RSLCD
@@ -297,7 +297,7 @@ writeonwclr:
 					ACALL w10ms
 					ACALL w10ms
 					ACALL w10ms
-					
+
 					SETB RSLCD
 					MOV LCDDATA, #3AH
 					SETB ELCD
@@ -306,10 +306,10 @@ writeonwclr:
 					ACALL w10ms
 					ACALL w10ms
 					ACALL w10ms
-					
+
 					MOV R3, 02H
 					MOV R0, #MYMSG
-					
+
 writeowncic:
 					SETB RSLCD
 					MOV LCDDATA, @R0
@@ -320,11 +320,11 @@ writeowncic:
 					ACALL w10ms
 					ACALL w10ms
 					INC R0
-					DJNZ R3, writeowncic		
-					
+					DJNZ R3, writeowncic
+
 					RET
 
-KLAR:					
+KLAR:
 					;Limpia la parte del LCD donde se escribe,
 					;despues de mandar el dato en sdata
 					MOV R1, #MYMSG
@@ -345,14 +345,14 @@ klarcic:
 					CLR ELCD
 					ACALL w10ms
 					DJNZ R5, klarcic
-					
+
 					CLR RSLCD
 					MOV LCDDATA, #0C0H
 					SETB ELCD
 					NOP
 					CLR ELCD
 					ACALL w10ms
-					
+
 					SETB RSLCD
 					MOV A, #YO
 					ORL A, #30H
@@ -361,20 +361,20 @@ klarcic:
 					NOP
 					CLR ELCD
 					ACALL w10ms
-					
+
 					MOV LCDDATA, #3AH
 					SETB ELCD
 					NOP
 					CLR ELCD
-					ACALL w10ms				
+					ACALL w10ms
 					RET
-					
-					
+
+
 FORWARD:
 					; Cambiamos a banco de registros 2
 					CLR RS0
 					SETB RS1
-					
+
 					MOV A, INFOBY
 					ANL A, #30H
 					RR A
@@ -395,7 +395,7 @@ contfw:
 					ANL A, #0CFH
 					ORL A, R3
 					MOV INFOBY, A
-					
+
 					MOV SBUF, INFOBY
 					JNB TI, $
 					CLR TI
@@ -405,10 +405,10 @@ contfw:
 					ACALL W10MS
 					ACALL W10MS
 					ACALL W10MS
-					
+
 					MOV R0, #LASTMSG
 					MOV R2, LASTCNT
-					
+
 fwcic:
 					MOV SBUF, @R0
 					JNB TI, $
@@ -422,7 +422,7 @@ fwcic:
 					ACALL W10MS
 					DJNZ R2, fwcic
 					JMP retfw
-retfw0:				
+retfw0:
 					;CLR SENDING
 retfw:
 					; Cambiamos a banco de registros 0
@@ -436,12 +436,12 @@ SERIAL:
 					;Banco registros 1
 					SETB RS0
 					CLR RS1
-					
+
 ;					/*Si fue TI, salimos de la interrupcion, y lo
 ;					maneja SEND*/
 					MOV C, TI
 					JC retserial
-					
+
 					;CLR P1.7
 					CLR RI
 					;Verifica si recibimos el token y lo guarda
@@ -449,48 +449,48 @@ SERIAL:
 					;CJNE A, #0FFH, contin
 					;SETB TOKEN
 					;JMP retserial
-					
+
 contin:
 					;Si INFOM esta prendido, ya recibimos el byte del protocolo
-					;y guardamos el mensaje					
+					;y guardamos el mensaje
 					JB INFOM, savemsg
 
 					SETB INFOM
-					
+
 					MOV INFOBY, SBUF
-					
+
 					;;DEBUGG
 					;MOV A, INFOBY
 					;ACALL DATO
 					;DEC R1
 					;DEC R2
-					
+
 					;Guarda los 4 bits de conteo del protocolo en R3
 					MOV A, INFOBY
 					ANL A, #0FH
 					MOV R3, A
-					
+
 					;Inicializamos el contador R5 (datos ya recibidos)
 					;y el apuntador de donde inicia LASTMSG para guardar los chars
 					MOV R5, #00H
 					MOV R0, #LASTMSG
-					
+
 					JMP retserial
-					
+
 savemsg:
-					
+
 recievedata:
 					;Si todavia no acabamos de recibir, guardamos el dato y salimos
 					;de la interrupcion SERIAL
 					MOV A, R5
 					CJNE A, 0BH, revdat ;CJNE R5, R3, revdat
-					
+
 endrecieve:
 					;Ya recibimos todos los chars. Limpiamos todas las banderas de control
 					;para dejarlo listo para otra recepcion de chars.
 					;SETB LASTF
 					MOV LASTCNT, R3
-					
+
 					;Guardamos el micro remitente
 					MOV A, INFOBY
 					ANL A, #0C0H
@@ -501,7 +501,7 @@ endrecieve:
 					RR A
 					RR A
 					MOV LSTSNDR, A
-					
+
 					CLR INFOM
 					;SETB P1.7
 					;Mandamos lo recibido al LCD
@@ -513,26 +513,26 @@ revdat:
 					MOV @R0, SBUF
 					INC R0
 					INC R5
-					
+
 					;DEBUGG
 					;MOV A, SBUF
 					;ACALL DATO
 					;DEC R1
 					;DEC R2
-					
+
 					MOV A, R5
 					CJNE A, 0BH, retserial
-					
+
 					JMP endrecieve
 
-retserial:										
+retserial:
 					;Banco registros 0
 					CLR RS0
 					CLR RS1
 					MOV A, ACUM2
 					RETI
 
-TOLCD:									
+TOLCD:
 					;Limpia la parte del LCD donde se recibe,
 					;despues de recibir el dato en sdata
 					CLR RSLCD
@@ -541,10 +541,10 @@ TOLCD:
 					NOP
 					CLR ELCD
 					ACALL w10ms
-					
+
 					MOV R5, #10H
-					
-tolcdclr:			
+
+tolcdclr:
 					SETB RSLCD
 					ACALL w10ms
 					ACALL w10ms
@@ -557,7 +557,7 @@ tolcdclr:
 					ACALL w10ms
 					ACALL w10ms
 					DJNZ R5, tolcdclr
-					
+
 					ACALL w10ms
 					ACALL w10ms
 					ACALL w10ms
@@ -567,7 +567,7 @@ tolcdclr:
 					NOP
 					CLR ELCD
 					ACALL w10ms
-					
+
 					ACALL w10ms
 					ACALL w10ms
 					ACALL w10ms
@@ -579,7 +579,7 @@ tolcdclr:
 					NOP
 					CLR ELCD
 					ACALL w10ms
-					
+
 					ACALL w10ms
 					ACALL w10ms
 					ACALL w10ms
@@ -588,11 +588,11 @@ tolcdclr:
 					NOP
 					CLR ELCD
 					ACALL w10ms
-					
-					MOV R5, LASTCNT					
+
+					MOV R5, LASTCNT
 					MOV R1, #LASTMSG
-					
-tolcdloop:				
+
+tolcdloop:
 					ACALL w10ms
 					ACALL w10ms
 					ACALL w10ms
@@ -608,8 +608,8 @@ tolcdloop:
 					CLR ELCD
 					ACALL w10ms
 					INC R1
-					DJNZ R5, tolcdloop 
-					
+					DJNZ R5, tolcdloop
+
 					ACALL w10ms
 					ACALL w10ms
 					ACALL w10ms
@@ -621,10 +621,10 @@ tolcdloop:
 					NOP
 					CLR ELCD
 					ACALL w10ms
-					
+
 					RET
 
-DECO: 
+DECO:
 					;Recibe DATO del teclado matricial y lo decodifica
 					;Verifica que no se hayan escrito los 14 chars disponibles
 					MOV ACUM, A
@@ -664,10 +664,10 @@ retdec1:
 					CLR RS1
 					RETI
 
-T0ISR:	
+T0ISR:
 					MOV ACUM, A
 					CLR TF0
-					
+
 					;Verifica si ya puede mandar el token
 					;JNB TOKEN, contT0
 					;JB SENDING, contT0
@@ -675,7 +675,7 @@ T0ISR:
 					;JNB TI, $
 					;CLR TI
 					;CLR TOKEN
-					
+
 contT0:
 					MOV C, ALTB
 					MOV EDSIG.0, C
@@ -686,14 +686,14 @@ contT0:
 					MOV C, ACC.0
 					JNC bakspchk
 					CPL ALTF
-bakspchk:			
+bakspchk:
 					MOV C, ACC.1
 					JNC ret0
 					MOV C, EDSIG.1
 					JC ret0
 					ACALL BACKSPACE
-					
-ret0:	
+
+ret0:
 					MOV EDANT, EDSIG
 					MOV A, ACUM
 					RETI
