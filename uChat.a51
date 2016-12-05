@@ -20,9 +20,9 @@
 					ACUM	EQU 24H
 					ACUM2	EQU 25H
 					INFOBY	EQU 26H
-						
+					
 					YO		EQU 02H
-						
+					
 					;I/O
 					LCDDATA	EQU P2 ;Salida al LCD
 					TECLADO	EQU P0 ;Entrada de 4 bits, del teclado matricial
@@ -32,8 +32,8 @@
 					SENDB	EQU P3.3 ;Entrada del boton SEND
 					HISTB	EQU P1.2
 					BKSPCB	EQU P1.0
-						
-						
+					
+					
 					;Memoria de proposito general (bytes)
 					MYMSG	EQU 80H
 					LASTMSG	EQU 8EH					
@@ -80,6 +80,7 @@ main:
 					MOV IP, #00110010b
 					SETB IT0
 					SETB IT1
+					CLR INFOM
 					
 					;SETB TOKEN ; Sólo micro 0
 					;CLR TOKEN ; Micros 1 y 2
@@ -109,7 +110,7 @@ main:
 					ACALL INLCD	
 					CLR TI
 					JMP $
-						
+					
 W10MS:	
 					SETB TR2
 					JNB TF2, $
@@ -228,6 +229,10 @@ genctrlbyte:
 					CLR TI
 					ACALL w10ms
 					ACALL W10MS
+					ACALL W10MS
+					ACALL W10MS
+					ACALL W10MS
+					ACALL W10MS
 
 sdata:	
 					MOV SBUF, @R0
@@ -235,15 +240,89 @@ sdata:
 					CLR TI
 					ACALL W10MS
 					ACALL W10MS
+					ACALL W10MS
+					ACALL W10MS
+					ACALL W10MS
+					ACALL W10MS
 					INC R0
 					DJNZ R3, sdata
+					ACALL WRITEOWN
 					ACALL KLAR
+					
 					;CLR SENDING
 					
 retsnd:	
 					SETB EX0
 					RETI
+					
 
+WRITEOWN:
+					CLR RSLCD
+					MOV LCDDATA, #80H
+					SETB ELCD
+					NOP
+					CLR ELCD
+					ACALL w10ms
+					ACALL w10ms
+					ACALL w10ms
+					
+					MOV R5, #10H
+writeonwclr:	
+					SETB RSLCD
+					MOV LCDDATA, #20H
+					SETB ELCD
+					NOP
+					CLR ELCD
+					ACALL w10ms
+					ACALL w10ms
+					ACALL w10ms
+					DJNZ R5, writeonwclr
+					
+					CLR RSLCD
+					MOV LCDDATA, #80H
+					SETB ELCD
+					NOP
+					CLR ELCD
+					ACALL w10ms
+					ACALL w10ms
+					ACALL w10ms
+					
+					MOV A, #YO
+					ORL A, #30H
+					SETB RSLCD
+					MOV LCDDATA, A
+					SETB ELCD
+					NOP
+					CLR ELCD
+					ACALL w10ms
+					ACALL w10ms
+					ACALL w10ms
+					
+					SETB RSLCD
+					MOV LCDDATA, #3AH
+					SETB ELCD
+					NOP
+					CLR ELCD
+					ACALL w10ms
+					ACALL w10ms
+					ACALL w10ms
+					
+					MOV R3, 02H
+					MOV R0, #MYMSG
+					
+writeowncic:
+					SETB RSLCD
+					MOV LCDDATA, @R0
+					SETB ELCD
+					NOP
+					CLR ELCD
+					ACALL w10ms
+					ACALL w10ms
+					ACALL w10ms
+					INC R0
+					DJNZ R3, writeowncic		
+					
+					RET
 
 KLAR:					
 					;Limpia la parte del LCD donde se escribe,
@@ -303,7 +382,7 @@ FORWARD:
 					RR A
 					RR A
 					DEC A
-					CJNE A, #00H, contfw
+					CJNE A, #01H, contfw
 					JMP retfw0
 contfw:
 					RL A
@@ -311,7 +390,7 @@ contfw:
 					RL A
 					RL A
 					ANL A, #30H
-					MOV R3, A	
+					MOV R3, A
 					MOV A, INFOBY
 					ANL A, #0CFH
 					ORL A, R3
@@ -320,6 +399,10 @@ contfw:
 					MOV SBUF, INFOBY
 					JNB TI, $
 					CLR TI
+					ACALL W10MS
+					ACALL W10MS
+					ACALL W10MS
+					ACALL W10MS
 					ACALL W10MS
 					ACALL W10MS
 					
@@ -331,6 +414,10 @@ fwcic:
 					JNB TI, $
 					CLR TI
 					INC R0
+					ACALL W10MS
+					ACALL W10MS
+					ACALL W10MS
+					ACALL W10MS
 					ACALL W10MS
 					ACALL W10MS
 					DJNZ R2, fwcic
@@ -349,11 +436,13 @@ SERIAL:
 					;Banco registros 1
 					SETB RS0
 					CLR RS1
+					
 ;					/*Si fue TI, salimos de la interrupcion, y lo
 ;					maneja SEND*/
 					MOV C, TI
 					JC retserial
 					
+					;CLR P1.7
 					CLR RI
 					;Verifica si recibimos el token y lo guarda
 					;MOV A, SBUF
@@ -370,6 +459,12 @@ contin:
 					
 					MOV INFOBY, SBUF
 					
+					;;DEBUGG
+					;MOV A, INFOBY
+					;ACALL DATO
+					;DEC R1
+					;DEC R2
+					
 					;Guarda los 4 bits de conteo del protocolo en R3
 					MOV A, INFOBY
 					ANL A, #0FH
@@ -381,6 +476,7 @@ contin:
 					MOV R0, #LASTMSG
 					
 					JMP retserial
+					
 savemsg:
 					
 recievedata:
@@ -407,6 +503,7 @@ endrecieve:
 					MOV LSTSNDR, A
 					
 					CLR INFOM
+					;SETB P1.7
 					;Mandamos lo recibido al LCD
 					ACALL TOLCD
 					;Reenvia el mensaje al siguiente micro
@@ -416,7 +513,13 @@ revdat:
 					MOV @R0, SBUF
 					INC R0
 					INC R5
-
+					
+					;DEBUGG
+					;MOV A, SBUF
+					;ACALL DATO
+					;DEC R1
+					;DEC R2
+					
 					MOV A, R5
 					CJNE A, 0BH, retserial
 					
@@ -606,7 +709,7 @@ bcksp:
 					SETB ELCD
 					NOP
 					CLR ELCD
-					ACALL W10MS					
+					ACALL W10MS
 retbcksp:
 					RET
 
