@@ -521,7 +521,7 @@ revdat:
 					;DEC R2
 
 					MOV A, R5
-					CJNE A, 0BH, retserial
+					CJNE A, 0BH, retserial ;CJNE R5, R3, retserial
 
 					JMP endrecieve
 
@@ -535,6 +535,8 @@ retserial:
 TOLCD:
 					;Limpia la parte del LCD donde se recibe,
 					;despues de recibir el dato en sdata
+
+					;Mueve el cursor a la 1era linea
 					CLR RSLCD
 					MOV LCDDATA, #80H
 					SETB ELCD
@@ -542,9 +544,12 @@ TOLCD:
 					CLR ELCD
 					ACALL w10ms
 
+					;Inicializa contador del ciclo de limpiado del LCD
 					MOV R5, #10H
 
 tolcdclr:
+					;Manda un caracter de espacio 16 veces para limpiar la parte del
+					;LCD donde se recibe
 					SETB RSLCD
 					ACALL w10ms
 					ACALL w10ms
@@ -558,6 +563,7 @@ tolcdclr:
 					ACALL w10ms
 					DJNZ R5, tolcdclr
 
+					;Mueve el cursor a la 1era linea del LCD
 					ACALL w10ms
 					ACALL w10ms
 					ACALL w10ms
@@ -568,6 +574,7 @@ tolcdclr:
 					CLR ELCD
 					ACALL w10ms
 
+					;Escribe el identificador del micro remitente
 					ACALL w10ms
 					ACALL w10ms
 					ACALL w10ms
@@ -580,6 +587,7 @@ tolcdclr:
 					CLR ELCD
 					ACALL w10ms
 
+					;Escribe los dos puntos
 					ACALL w10ms
 					ACALL w10ms
 					ACALL w10ms
@@ -589,10 +597,13 @@ tolcdclr:
 					CLR ELCD
 					ACALL w10ms
 
+					;Inicializa apuntador del mensaje y contador de chars
+					;escritos en LCD
 					MOV R5, LASTCNT
 					MOV R1, #LASTMSG
 
 tolcdloop:
+					;Escribe cada char en el LCD
 					ACALL w10ms
 					ACALL w10ms
 					ACALL w10ms
@@ -610,6 +621,7 @@ tolcdloop:
 					INC R1
 					DJNZ R5, tolcdloop
 
+					;Regresa el cursor al ultimo caracter escrito en la 2da linea
 					ACALL w10ms
 					ACALL w10ms
 					ACALL w10ms
