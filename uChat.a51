@@ -21,17 +21,17 @@
 					ACUM2	EQU 25H
 					INFOBY	EQU 26H
 						
-					YO		EQU 00H
+					YO		EQU 02H
 						
 					;I/O
 					LCDDATA	EQU P2 ;Salida al LCD
 					TECLADO	EQU P0 ;Entrada de 4 bits, del teclado matricial
 					RSLCD	EQU P3.6
 					ELCD	EQU P3.7
-					ALTB	EQU P1.0 ;Entrada del boton ALT
+					ALTB	EQU P1.1 ;Entrada del boton ALT
 					SENDB	EQU P3.3 ;Entrada del boton SEND
 					HISTB	EQU P1.2
-					BKSPCB	EQU P1.1
+					BKSPCB	EQU P1.0
 						
 						
 					;Memoria de proposito general (bytes)
@@ -61,11 +61,11 @@
 					ORG 0000H
 					JMP main
 					ORG 0003H ;EX0
-					JMP DECO
+					JMP SEND
 					ORG 000BH
 					JMP T0ISR
 					ORG 0013H ;EX1
-					JMP SEND
+					JMP DECO
 					ORG 0023H
 					JMP SERIAL
 					ORG 002BH
@@ -188,7 +188,7 @@ DATO:
 					RET
 
 SEND:	
-					CLR EX1
+					CLR EX0
 					ACALL W10MS
 					ACALL W10MS
 					ACALL W10MS
@@ -241,7 +241,7 @@ sdata:
 					;CLR SENDING
 					
 retsnd:	
-					SETB EX1
+					SETB EX0
 					RETI
 
 
