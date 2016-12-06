@@ -195,6 +195,7 @@ SEND:
 					ACALL W10MS
 					ACALL W10MS
 					ACALL W10MS
+
 					MOV C, SENDB
 					JC retsnd
 
@@ -257,6 +258,7 @@ retsnd:
 
 
 WRITEOWN:
+					;Mueve el cursor a la 1era linea del LCD
 					CLR RSLCD
 					MOV LCDDATA, #80H
 					SETB ELCD
@@ -266,8 +268,10 @@ WRITEOWN:
 					ACALL w10ms
 					ACALL w10ms
 
+					;Contador del ciclo de limpiar LCD
 					MOV R5, #10H
 writeonwclr:
+					;Escribe 16 espacios para limpiar la 1era linea
 					SETB RSLCD
 					MOV LCDDATA, #20H
 					SETB ELCD
@@ -278,6 +282,7 @@ writeonwclr:
 					ACALL w10ms
 					DJNZ R5, writeonwclr
 
+					;Mueve el cursor a la 1era linea
 					CLR RSLCD
 					MOV LCDDATA, #80H
 					SETB ELCD
@@ -287,6 +292,7 @@ writeonwclr:
 					ACALL w10ms
 					ACALL w10ms
 
+					;Escribe el identificador y dos puntos
 					MOV A, #YO
 					ORL A, #30H
 					SETB RSLCD
@@ -307,10 +313,12 @@ writeonwclr:
 					ACALL w10ms
 					ACALL w10ms
 
+					;Inicializa contador de datos a escribir y apuntador de chars
 					MOV R3, 02H
 					MOV R0, #MYMSG
 
 writeowncic:
+					;Escribe cada char en el LCD
 					SETB RSLCD
 					MOV LCDDATA, @R0
 					SETB ELCD
@@ -327,18 +335,24 @@ writeowncic:
 KLAR:
 					;Limpia la parte del LCD donde se escribe,
 					;despues de mandar el dato en sdata
+
+					;Restablece apuntador y contador de datos escritos
 					MOV R1, #MYMSG
 					MOV R2, #00H
+
+					;Mueve el cursor a la 2da linea
 					CLR RSLCD
 					MOV LCDDATA, #0C0H
 					SETB ELCD
 					NOP
 					CLR ELCD
 					ACALL w10ms
+
 					;R5 = Contador de chars a escribir
 					MOV R5, #10H
 					SETB RSLCD
 klarcic:
+					;Escribe 16 espacios en la 2da linea del LCD
 					MOV LCDDATA, #20H
 					SETB ELCD
 					NOP
@@ -346,6 +360,7 @@ klarcic:
 					ACALL w10ms
 					DJNZ R5, klarcic
 
+					;Mueve el cursor a la 2da linea
 					CLR RSLCD
 					MOV LCDDATA, #0C0H
 					SETB ELCD
@@ -353,6 +368,7 @@ klarcic:
 					CLR ELCD
 					ACALL w10ms
 
+					;Ecribe el identificador y dos puntos
 					SETB RSLCD
 					MOV A, #YO
 					ORL A, #30H
@@ -375,6 +391,7 @@ FORWARD:
 					CLR RS0
 					SETB RS1
 
+					;Obtenemos los reenvios del INFOBYTE y le restamos 1
 					MOV A, INFOBY
 					ANL A, #30H
 					RR A
@@ -382,20 +399,27 @@ FORWARD:
 					RR A
 					RR A
 					DEC A
+
+					;Si el contador de reenvios es 1, ya no se tiene que reenviar
 					CJNE A, #01H, contfw
 					JMP retfw0
 contfw:
+					;Regresa los dos bits a su posicion original en el byte
 					RL A
 					RL A
 					RL A
 					RL A
+					;Eliminamos basura en los demas bits, nos quedamos con el de
+					;reenvios
 					ANL A, #30H
 					MOV R3, A
 					MOV A, INFOBY
 					ANL A, #0CFH
+					;Pegamos el resto del INFOBYTE con los reenvios ya decrementados
 					ORL A, R3
 					MOV INFOBY, A
 
+					;Transmitimos el INFOBYTE nuevo
 					MOV SBUF, INFOBY
 					JNB TI, $
 					CLR TI
@@ -406,10 +430,12 @@ contfw:
 					ACALL W10MS
 					ACALL W10MS
 
+					;Inicializamos apuntadores y contador de chars a transmitir
 					MOV R0, #LASTMSG
 					MOV R2, LASTCNT
 
 fwcic:
+					;Mandamos cada char recibido
 					MOV SBUF, @R0
 					JNB TI, $
 					CLR TI
@@ -421,6 +447,7 @@ fwcic:
 					ACALL W10MS
 					ACALL W10MS
 					DJNZ R2, fwcic
+
 					JMP retfw
 retfw0:
 					;CLR SENDING
@@ -657,13 +684,13 @@ alt:
 					ANL A, #0FH
 					MOV DPTR, #Val2
 					MOVC A, @A+DPTR
-					JB ALTDAT, DATO2
-DATO1:
+					JB ALTDAT, dato2
+dato1:
 					SWAP A
 					MOV R4, A
 					SETB ALTDAT
 					JMP retdec1
-DATO2:
+dato2:
 					ORL A, R4
 					CLR ALTDAT
 					MOV R4, #00H
@@ -696,6 +723,7 @@ contT0:
 					MOV A, EDANT
 					XRL A, EDSIG
 					MOV C, ACC.0
+
 					JNC bakspchk
 					CPL ALTF
 bakspchk:
@@ -711,11 +739,15 @@ ret0:
 					RETI
 
 BACKSPACE:
+					;Si no tenemos chars escritos, salimos
 					CJNE R2, #00H, bcksp
 					JMP retbcksp
 bcksp:
+					;Decrementamos el contador de chars escritos y el apuntador
+					;de datos de MYMSG
 					DEC R2
 					DEC R1
+					;Recorre a la izquierda el cursor
 					CLR RSLCD
 					MOV LCDDATA, #10H
 					SETB ELCD
